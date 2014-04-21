@@ -51,7 +51,7 @@ class LocationMap(defaultdict):
 
 		self._connect_ports()
 		self._connect_endpoints()
-		self._find_routes()
+		self._find_paths()
 
 	def _connect_ports(self):
 		# evaluate neighbours based on ferry routes
@@ -69,13 +69,13 @@ class LocationMap(defaultdict):
 		for location in self.endpoints:
 			self[location].update(self.ports[location.country])
 
-	def _find_routes(self):
+	def _find_paths(self):
 		# find all outward and return routes
 		a, b = self.origin, self.destination
 		d = {}
 		d['OUT'] = filter(has_single_crossing, find_paths(self, a, b))
 		d['RTN'] = filter(has_single_crossing, find_paths(self, b, a))
-		self.routes = d
+		self.paths = d
 
 
 def find_paths(lmap, start, end, path=[]):

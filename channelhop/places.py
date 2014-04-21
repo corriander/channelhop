@@ -26,6 +26,15 @@ class LocationMap(defaultdict):
 
 		>>> lmap = LocationMap('MyHouse', 'HolidayDest')
 
+	The following attributes are available after instantiation:
+
+		ports : dict containing ports
+		origin : argument
+		destination : argument
+		endpoints : set(origin, destination)
+		locations : set of ports and endpoints
+		routes : dict containing list of routes (both out and rtn).
+
 	"""
 
 	ports = {}
@@ -39,8 +48,10 @@ class LocationMap(defaultdict):
 		self.destination = Location(destination, 'FR')
 		self.endpoints = set([self.origin, self.destination])
 		self.locations = self.ports['ALL'].union(self.endpoints)
+
 		self._connect_ports()
 		self._connect_endpoints()
+		self._find_routes()
 
 	def _connect_ports(self):
 		# evaluate neighbours based on ferry routes
@@ -57,3 +68,40 @@ class LocationMap(defaultdict):
 		# evaluate neighbours of origin and destination
 		for location in self.endpoints:
 			self[location].update(self.ports[location.country])
+
+	def _find_routes(self):
+		# find all outward and return routes
+		a, b = self.origin, self.destination
+		d = {}
+		d['OUT'] = filter(has_single_crossing, find_paths(self, a, b))
+		d['RTN'] = filter(has_single_crossing, find_paths(self, b, a))
+		self.routes = d
+
+
+def find_paths(lmap, start, end, path=[]):
+	"""Find all paths in a location map between two locations."""
+	path = path + [start] # Add the start node to the current path
+	if start == end:
+		return [path]
+	if not lmap.has_key(start):
+		# invalid start node
+		raise ValueError('Start location not in lmap')
+	
+	paths = [] # container for all paths
+	for neighbour in filter(lambda l: l not in path, lmap[start]):
+		# for each UNVISITED neighbour, find paths and store
+		newpaths = find_paths(lmap, neighbour, end, path)
+		for newpath in newpaths:
+			paths.append(newpath)
+	return paths
+
+def has_single_crossing(path):
+	"""Evaluate whether path has a single crossing."""
+	result, crossings, last_node = True, 0, path[0]
+	for node in path[1:]:
+		if node.country is not last_node.country:
+			crossings += 1
+			last_node = node
+	if crossings > 1: result = False
+	return result
+

@@ -31,3 +31,18 @@ class Link(object):
 		self.duration = duration
 		self.cost = cost
 		self.note = note
+
+class Segment(object):
+	"""An itinerary segment.
+
+	A segment consists of two waypoints and a link.
+
+		start, end : Waypoint instances
+		link : Link instance
+
+	"""
+	def __init__(self, start, end, link):
+		self.start = start
+		self.end = end
+		self.link = link
+		# TODO: Add switch and methods for deriving WP date/time

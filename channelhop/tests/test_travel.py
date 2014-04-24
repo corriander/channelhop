@@ -82,8 +82,8 @@ class TestLink(unittest.TestCase):
 		self.assertEqual(self.link.note, '')
 		self.assertEqual(self.link.cost, 95.30) 
 
-class TestSegment(unittest.TestCase):
 
+class TestSegment(unittest.TestCase):
 	def test_unanchored_route(self):
 		start = Waypoint(Location('A', 'UK'), None)
 		end = Waypoint(Location('B', 'UK'), None)
@@ -244,7 +244,7 @@ class TestSegmentMap(unittest.TestCase):
 		segment_b = Segment(start, end, link_b)
 		self.assertIn(segment_a, self.segmap[key])
 		self.assertIn(segment_b, self.segmap[key])
-
+		
 		# Test inward routes also present and correct
 		key = key[::-1]
 		self.assertEqual(len(self.segmap[key]), 2)
@@ -252,6 +252,42 @@ class TestSegmentMap(unittest.TestCase):
 		segment_b = Segment(end, start, link_b)
 		self.assertIn(segment_a, self.segmap[key])
 		self.assertIn(segment_b, self.segmap[key])
+
+
+class TestItinerary(unittest.TestCase):
+	"""Test case for the Itinerary class"""
+	def setUp(self):
+		path = [Location('A', 'UK'),
+				Location('Portsmouth', 'UK'),
+				Location('Cherbourg', 'FR'),
+				Location('B', 'FR')
+				]
+
+		car_wps = map(lambda l: Waypoint(l, None) for l in path)
+		fer_wps = [Waypoint(path[1], datetime(2000, 1, 1, 9, 0)),
+				   Waypoint(path[2], datetime(2000, 1, 1, 13, 0))]
+		car = [Link(timedelta(minutes=45), 5.0, '')
+			   Link(timedelta(minutes=90), 10.0, '')]
+		ferry = Link(timedelta(minutes=180), 100.0, 'Ferry Operator')
+
+		segments = [
+				Segment(*car_wps[:2], link=car[0]),
+				Segment(*fer_wps, link=ferry)
+				Segment(*car_wps[2:], link=car[1]),
+				]
+		self.itin = Itinerary(segments)
+
+	def test_cost(self):
+		"""Test total cost for itinerary is calculated correctly."""
+		pass
+
+	def test_arrival(self):
+		"""Test the itinerary reports correct arrival time."""
+		pass
+
+	def test_departure(self):
+		"""With test_arrival, this ensures schedule has been calced"""
+		pass
 
 
 if __name__ == '__main__':

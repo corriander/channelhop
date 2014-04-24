@@ -95,6 +95,7 @@ class Link(object):
 	def __eq__(self, other):
 		return self.__dict__ == other.__dict__
 
+
 class Segment(object):
 	"""An itinerary segment.
 
@@ -173,3 +174,38 @@ class SegmentMap(defaultdict):
 			self[route[:2]].append(Segment.from_CarData(route))
 		for route in list_ferry_data:
 			self[route[:2]].append(Segment.from_FerryData(route))
+
+
+class Itinerary(list):
+	"""A sequence of joined segments (merged end/start waypoints)."""
+	def __init__(self, segments):
+		"""Instantiated with a list of Segment instances."""
+		list.__init__(self)
+		self._collapse(segments)
+		self._propagate_schedule()
+
+	def _collapse(self, segments):
+		# Collapse segments. Joins segments together sensibly. Init
+		# helper method.
+		pass
+
+	def _propagate_schedule(self):
+		# Propagates date/time information through the itinerary.
+		pass
+
+	@property
+	def cost(self):
+		"""Total cost for the route."""
+		total = []
+		for element in self:
+			# This is very lazy...
+			try:
+				total.append(element.cost)
+			except AttributeError:
+				pass
+		return sum(total)
+
+	@property
+	def arrival(self):
+		"""Destination arrival date/time."""
+		return self[-1].datetime 

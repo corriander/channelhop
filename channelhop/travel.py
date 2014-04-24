@@ -82,10 +82,13 @@ class Link(object):
 	def __str__(self):
 		h, s = divmod(int(self.duration.total_seconds()), 3600)
 		m, __ = divmod(s, 60)
-		string =  '{}h{} \xc2\xa3{:.2f}'.format(int(h), 
-											    m,
-											    self.cost,
-											    self.note)
+		note = self.note
+		if note:
+			note = '. {}'.format(note)
+		string =  '{}h{} \xc2\xa3{:.2f}{}'.format(h, 
+											      m,
+											      self.cost,
+											      note)
 		return string
 
 

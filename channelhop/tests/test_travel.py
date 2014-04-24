@@ -151,9 +151,13 @@ class TestSegment(unittest.TestCase):
 		self.assertEqual(seg.link.duration.seconds, 14400)
 		self.assertEqual(seg.link.cost, 240)
 		self.assertEqual(seg.link.note, 'Ferry Operator, test note') 
-		self.assertEqual(str(seg),
-			('A, UK (Sat 01 Jan 2300) --> B, FR (Sat 02 Jan 0400) '
-			 '(4h0) £240.00, Ferry Operator, test note'))
+		expected_string = ('A, UK (Sat 01 Jan, 2300) --> '
+						   'B, FR (Sun 02 Jan, 0400) : '
+						   '4h0 £240.00. '
+						   'Ferry Operator, test note'
+						   )
+		self.assertEqual(str(seg), expected_string)
+			 
 
 if __name__ == '__main__':
 	unittest.main()

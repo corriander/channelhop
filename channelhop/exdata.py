@@ -60,7 +60,7 @@ class Parser(object):
 		source, destination = map(self.location.get, row[:2])
 		distance = float(row[2])
 		duration = map(int, row[3].split(':'))
-		duration = timedelta(duration[0] * 3600 + duration[1] * 60)
+		duration = timedelta(hours=duration[0], minutes=duration[1])
 		cost = float(row[4])
 		note = row[5]
 		cd = [CarData(source, destination, distance, duration, cost,

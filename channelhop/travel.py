@@ -2,6 +2,7 @@
 import copy
 from collections import defaultdict
 from datetime import timedelta
+from places import LocationMap
 
 class Waypoint(object):
 	"""A waypoint is a node in an itinerary.
@@ -293,3 +294,21 @@ class Route(list):
 		return (min(cost_list), max(cost_list))
 
 
+class Trip(object):
+	"""A <-> B, potentially aysmmetrical trip via channel ferries.
+	
+	This provides a range of potential combinations with metadata for
+	decision-making assistance purposes.
+	
+	"""
+	def __init__(self, origin, destination, ferries, car_routes):
+		self.segmap = SegmentMap(car_routes, ferries)
+		self.lmap = LocationMap(origin, destination)
+		self.out = [Route(path, self.segmap) 
+					for path in self.lmap.paths['OUT']]
+		self.rtn = [Route(path, self.segmap)
+					for path in self.lmap.paths['RTN']]
+		self.origin = self.lmap.origin
+		self.destination = self.lmap.destination
+
+		

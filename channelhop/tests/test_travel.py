@@ -1,6 +1,6 @@
 import unittest
 from channelhop.travel import Waypoint, Link, Segment, SegmentMap
-from channelhop.travel import Itinerary, Route
+from channelhop.travel import Itinerary, Route, Trip
 from channelhop.places import Location, LocationMap
 from channelhop.exdata import FerryData
 from channelhop.exdata import CarData
@@ -331,6 +331,21 @@ class TestRoute(unittest.TestCase):
 		
 		"""
 		self.assertEqual(self.route.cost, (154, 315))
+
+
+class TestTrip(unittest.TestCase):
+	"""Tests the high-level Trip class."""
+	def setUp(self):
+		origin = 'A'
+		destination = 'B'
+		dataset = {'car' : CAR_DATA, 'ferry' : FERRY_DATA}
+		lmap = LocationMap('A', 'B')
+		cardata, ferrydata = Parser(lmap).parse(dataset)
+		self.trip = Trip(origin, destination, ferrydata, cardata)
+
+	def test_pass(self):
+		"""Dummy test. Trip is instantiating smoothly if no error"""
+		pass
 
 
 if __name__ == '__main__':

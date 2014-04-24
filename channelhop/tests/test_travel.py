@@ -279,15 +279,17 @@ class TestItinerary(unittest.TestCase):
 
 	def test_cost(self):
 		"""Test total cost for itinerary is calculated correctly."""
-		pass
+		self.assertEqual(self.itin.cost, 115.0)
 
 	def test_arrival(self):
 		"""Test the itinerary reports correct arrival time."""
-		pass
+		self.assertEqual(self.itin.arrival, 
+						 datetime(2000, 1, 1, 14, 30))
 
 	def test_departure(self):
 		"""With test_arrival, this ensures schedule has been calced"""
-		pass
+		self.assertEqual(self.itin[0].datetime,
+						 datetime(2000, 1, 1, 8, 15))
 
 
 if __name__ == '__main__':

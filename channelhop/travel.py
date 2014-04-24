@@ -1,6 +1,6 @@
 # coding: utf-8 
 import copy
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 from datetime import timedelta
 from places import LocationMap
 
@@ -294,6 +294,20 @@ class Route(list):
 		return (min(cost_list), max(cost_list))
 
 
+OptionBase = namedtuple('Option', 'out, rtn, cost, arrival_time')
+
+class Option(OptionBase):
+	__slots__ = ()
+	def __str__(self):
+		string = ['OPTION\n---------------------------------------\n']
+		string.append('COST: \xc2\xa3{:.2f}'.format(self.cost))
+		string.append('ARRIVAL: {}'.format(self.arrival_time))
+		string.append(str(self.out))
+		string.append('')
+		string.append(str(self.rtn))
+		string.append('')
+		return '\n'.join(string)
+
 class Trip(object):
 	"""A <-> B, potentially aysmmetrical trip via channel ferries.
 	
@@ -304,11 +318,29 @@ class Trip(object):
 	def __init__(self, origin, destination, ferries, car_routes):
 		self.segmap = SegmentMap(car_routes, ferries)
 		self.lmap = LocationMap(origin, destination)
-		self.out = [Route(path, self.segmap) 
-					for path in self.lmap.paths['OUT']]
-		self.rtn = [Route(path, self.segmap)
-					for path in self.lmap.paths['RTN']]
+		itineraries = self._itineraries()
+		self.out = itineraries['OUT']
+		self.rtn = itineraries['RTN']
 		self.origin = self.lmap.origin
 		self.destination = self.lmap.destination
+		self.options = self._generate_options() 
 
-		
+	def _itineraries(self):
+		# generate itineraries for all routes
+		d = {}
+		for direction in ('OUT', 'RTN'):
+			route_list = [Route(path, self.segmap)
+						  for path in self.lmap.paths[direction]]
+			route_list = filter(None, route_list)
+			d[direction] = [itinerary
+							for route in route_list
+							for itinerary in route]
+		return d
+
+	def _generate_options(self):
+		return [Option(itinerary_1, 
+					   itinerary_2, 
+					   (itinerary_1.cost + itinerary_2.cost)/4,
+					   itinerary_1[-1].datetime)
+				for itinerary_1 in self.out
+				for itinerary_2 in self.rtn]

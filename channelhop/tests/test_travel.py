@@ -345,6 +345,8 @@ class TestTrip(unittest.TestCase):
 
 	def test_pass(self):
 		"""Dummy test. Trip is instantiating smoothly if no error"""
+		print self.trip.options
+
 		pass
 
 

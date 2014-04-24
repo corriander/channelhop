@@ -187,11 +187,32 @@ class Itinerary(list):
 	def _collapse(self, segments):
 		# Collapse segments. Joins segments together sensibly. Init
 		# helper method.
-		pass
+		self.append(segments[0].start) # initial waypoint
+		for i in xrange(len(segments)):
+			seg = segments[i]
+			self.append(seg.link)
+			try:
+				next_ = segments[i+1]
+				seg.end.merge(next_.start)
+			except IndexError:
+				pass
+			self.append(seg.end)
 
 	def _propagate_schedule(self):
 		# Propagates date/time information through the itinerary.
-		pass
+		wps, links = self[::2], self[1::2]
+		for i in xrange(len(links)):
+			wp_a, wp_b = wps[i], wps[i+1]
+			link = links[i]
+			if wp_a.datetime and wp_b.datetime is None:
+				wp_b.datetime = wp_a.datetime + link.duration
+
+		wps, links = self[::-2], self[-2::-2]
+		for i in xrange(len(links)):
+			wp_a, wp_b = wps[i], wps[i+1]
+			link = links[i]
+			if wp_a.datetime and wp_b.datetime is None:
+				wp_b.datetime = wp_a.datetime - link.duration
 
 	@property
 	def cost(self):
@@ -209,3 +230,9 @@ class Itinerary(list):
 	def arrival(self):
 		"""Destination arrival date/time."""
 		return self[-1].datetime 
+
+	def __str__(self):
+		string = []
+		for i, element in enumerate(self):
+			string.append('{}.\t{}'.format(i, element))
+		return '\n'.join(string)

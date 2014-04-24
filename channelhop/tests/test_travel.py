@@ -1,6 +1,6 @@
 import unittest
 from channelhop.travel import Waypoint, Link, Segment, SegmentMap
-from channelhop.travel import Itinerary
+from channelhop.travel import Itinerary, Route
 from channelhop.places import Location, LocationMap
 from channelhop.exdata import FerryData
 from channelhop.exdata import CarData
@@ -291,6 +291,46 @@ class TestItinerary(unittest.TestCase):
 		"""With test_arrival, this ensures schedule has been calced"""
 		self.assertEqual(self.itin[0].datetime,
 						 datetime(2000, 1, 1, 8, 15))
+
+
+class TestRoute(unittest.TestCase):
+	def setUp(self):
+		self.path = path = [Location('A', 'UK'),
+							Location('Portsmouth', 'UK'),
+							Location('Le Havre', 'FR'),
+							Location('B', 'FR')
+							]
+		dataset = {'car' : CAR_DATA, 'ferry' : FERRY_DATA}
+		lmap = LocationMap('A', 'B')
+		cardata, ferrydata = Parser(lmap).parse(dataset)
+		segmap = SegmentMap(cardata, ferrydata)
+		self.route = Route(path, segmap)
+
+	def test_path(self):
+		"""Test the path is correct and retrievable."""
+		self.assertEqual(self.route.path, self.path)
+
+	def test_num_permutations(self):
+		"""Test the length of the Route instance is as expected.
+
+		The Route contains n permutations. For the test path and test
+		data, there are two ferry options (both with a cabin variant)
+		and two post-ferry routes to the destination. We can therefore
+		expect 8 permutations.
+
+		"""
+		self.assertEqual(len(self.route), 8)
+
+	def test_cost_range(self):
+		"""Test the route's cost range is as expected.
+		
+		The cheapest route is the cheaper ferry crossing without a
+		cabin and no toll route. This in conjunction with
+		test_num_permutations implies the full range of options has
+		been calculated.
+		
+		"""
+		self.assertEqual(self.route.cost, (154, 315))
 
 
 if __name__ == '__main__':

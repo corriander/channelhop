@@ -1,4 +1,5 @@
 # coding: utf-8 
+import copy
 from collections import defaultdict
 from datetime import timedelta
 
@@ -230,9 +231,65 @@ class Itinerary(list):
 	def arrival(self):
 		"""Destination arrival date/time."""
 		return self[-1].datetime 
-
+	
 	def __str__(self):
 		string = []
 		for i, element in enumerate(self):
 			string.append('{}.\t{}'.format(i, element))
 		return '\n'.join(string)
+
+
+class Route(list):
+	"""A route a set of itineraries corresponding to a path.
+	
+	The path is a list of Location instances. The itineraries are
+	calculated permutations of location-pair Segments along the path
+	(provided by a SegmentMap instance).
+	
+	"""
+	# TODO: Tighten this up. Initially the recursive permutation
+	# algorithm was intended to generate itineraries directly rather
+	# than sequences of segments. The method ran into early issues
+	# with prematurely mutated waypoints (causing problems in future
+	# itinerary-creation using the same references). This is the
+	# result of a "workaround" which turned out to be a little naive
+	# as, although it exposed the real cause of the issue (mutable
+	# waypoints, not the recursion per se), it has the same problems
+	# albeit with a more complex dataflow. _generate_permutations()
+	# could just become _generate_itineraries, and rather than
+	# instantiating itineraries with a sequence of segments, they
+	# could be appended in-place. As long as the itinerary creates
+	# deepcopies of waypoints when calculating datetimes, there
+	# shouldn't be an issue with mutability.
+
+	def __init__(self, path, segmap):
+		self.path = path
+		self.segmap = segmap
+		list.__init__(self)
+		self._generate_itineraries()
+
+	def _generate_itineraries(self):
+		# Create itineraries from Segment-sequence permutations.
+		permutations = self._generate_permutations(self.path)
+		for segment_sequence in permutations:
+			self.append(Itinerary(copy.deepcopy(segment_sequence)))
+
+	def _generate_permutations(self, path, history=[]):
+		# Generate permutations of segments along the path.
+		if len(path) == 1: return [history] # end of path
+		histories = []
+		for segment in self.segmap[tuple(path[:2])]:
+			new_history = history + [segment]
+			futures = self._generate_permutations(path[1:], 
+												  new_history)
+			for future in futures:
+				histories.append(future)
+		return histories
+
+	@property
+	def cost(self):
+		"""Min/max cost for route."""
+		cost_list = [itin.cost for itin in self]
+		return (min(cost_list), max(cost_list))
+
+

@@ -1,6 +1,6 @@
 import unittest
-from channelhop.travel import Waypoint, Link, Segment
-from channelhop.places import Location
+from channelhop.travel import Waypoint, Link, Segment, SegmentMap
+from channelhop.places import Location, LocationMap
 from channelhop.exdata import FerryData
 from channelhop.exdata import CarData
 from channelhop.exdata import Parser
@@ -158,6 +158,101 @@ class TestSegment(unittest.TestCase):
 						   )
 		self.assertEqual(str(seg), expected_string)
 			 
+
+class TestSegmentMap(unittest.TestCase):
+	"""Test Case for the SegmentMap class.
+
+	SegmentMap is a dictionary/mapping of location pairs to itinerary
+	segments generated from the externally-sourced datasets for
+	ferries and road/car routes.
+
+	"""
+	def setUp(self):
+		dataset = {'car' : CAR_DATA, 'ferry' : FERRY_DATA}
+		lmap = LocationMap('A', 'B')
+		cardata, ferrydata = Parser(lmap).parse(dataset)
+		self.segmap = SegmentMap(cardata, ferrydata)
+
+	def test_non_constrained_single_route(self):
+		"""Tests for a simple bi-directional road route (no sched.)"""
+		key = Location('A', 'UK'), Location('Portsmouth', 'UK')
+		self.assertEqual(len(self.segmap[key]), 1)
+		self.assertEqual(len(self.segmap[key[::-1]]), 1)
+
+		# Check segment structure
+		start = Waypoint(key[0], None)
+		end = Waypoint(key[1], None)
+		link = Link(duration=timedelta(minutes=45),
+					cost=8.50,
+					note='')
+
+		# Test outward route is present and correct
+		segment = Segment(start, end, link)
+		self.assertEqual(self.segmap[key][0], segment)
+		# Test inward route is present and correct
+		segment = Segment(end, start, link)
+		self.assertEqual(self.segmap[key[::-1]][0], segment)
+
+	def test_constrained_single_route(self):
+		"""Tests for a single-option ferry route.
+
+		Checks that the sample ferry route (Portsmouth --> Cherbourg)
+		is present and correct and is unique (it's directional so
+		should not exist in the Cherbourg --> Portsmouth mapping.
+
+		"""
+		key = (Location('Portsmouth', 'UK'), 
+			   Location('Cherbourg', 'FR'))
+		self.assertEqual(len(self.segmap[key]), 1)
+
+		# Check segment structure
+		start = Waypoint(key[0], datetime(2000, 1, 2, 9, 30))
+		end = Waypoint(key[1], datetime(2000, 1, 2, 13, 0))
+		link = Link(duration=timedelta(hours=2, minutes=30),
+					cost=170.0,
+					note='Operator A')
+
+		# Test outward route is present and correct
+		segment = Segment(start, end, link)
+		self.assertEqual(self.segmap[key][0], segment)
+		# Test inward route is NOT the same
+		self.assertNotEqual(self.segmap[key[::-1]][0], segment)
+
+	def test_non_constrained_multiroute(self):
+		"""Tests for a multi-option car/road route.
+
+		Checks that all options are present and correct for both
+		outward and return location-pairs.
+
+		"""
+		key = (Location('Le Havre', 'FR'), 
+			   Location('B', 'FR'))
+
+		# Check segment structure
+		start = Waypoint(key[0], None)
+		end = Waypoint(key[1], None)
+		link_a = Link(duration=timedelta(hours=5, minutes=0),
+					  cost=70.50,
+					  note='')
+		link_b = Link(duration=timedelta(hours=4, minutes=30),
+					  cost=90.0,
+					  note='tolls')
+
+		# Test outward routes present and correct
+		self.assertEqual(len(self.segmap[key]), 2)
+		segment_a = Segment(start, end, link_a)
+		segment_b = Segment(start, end, link_b)
+		self.assertIn(segment_a, self.segmap[key])
+		self.assertIn(segment_b, self.segmap[key])
+
+		# Test inward routes also present and correct
+		key = key[::-1]
+		self.assertEqual(len(self.segmap[key]), 2)
+		segment_a = Segment(end, start, link_a)
+		segment_b = Segment(end, start, link_b)
+		self.assertIn(segment_a, self.segmap[key])
+		self.assertIn(segment_b, self.segmap[key])
+
 
 if __name__ == '__main__':
 	unittest.main()

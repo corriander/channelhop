@@ -1,4 +1,5 @@
 # coding: utf-8 
+from collections import defaultdict
 from datetime import timedelta
 
 class Waypoint(object):
@@ -91,6 +92,8 @@ class Link(object):
 											      note)
 		return string
 
+	def __eq__(self, other):
+		return self.__dict__ == other.__dict__
 
 class Segment(object):
 	"""An itinerary segment.
@@ -122,7 +125,9 @@ class Segment(object):
 		start = Waypoint(ferry_data.source, ferry_data.dep)
 		end = Waypoint(ferry_data.destination, ferry_data.arr)
 		duration = cls._calculate_border_duration(start, end)
-		note = '{}, {}'.format(ferry_data.operator, ferry_data.note)
+		note = ferry_data.operator
+		if ferry_data.note:
+			note = '{}, {}'.format(note, ferry_data.note)
 		link = Link(duration, ferry_data.cost, note)
 		return cls(start, end, link)
 
@@ -156,3 +161,15 @@ class Segment(object):
 										  self.end, 
 										  self.link)
 		return string.replace('() ', '')
+
+	def __eq__(self, other):
+		return self.__dict__ == other.__dict__
+
+
+class SegmentMap(defaultdict):
+	def __init__(self, list_car_data, list_ferry_data):
+		defaultdict.__init__(self, list)
+		for route in list_car_data:
+			self[route[:2]].append(Segment.from_CarData(route))
+		for route in list_ferry_data:
+			self[route[:2]].append(Segment.from_FerryData(route))

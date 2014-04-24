@@ -1,5 +1,6 @@
 import unittest
 from channelhop.travel import Waypoint, Link, Segment, SegmentMap
+from channelhop.travel import Itinerary
 from channelhop.places import Location, LocationMap
 from channelhop.exdata import FerryData
 from channelhop.exdata import CarData
@@ -263,16 +264,16 @@ class TestItinerary(unittest.TestCase):
 				Location('B', 'FR')
 				]
 
-		car_wps = map(lambda l: Waypoint(l, None) for l in path)
+		car_wps = [Waypoint(l, None) for l in path]
 		fer_wps = [Waypoint(path[1], datetime(2000, 1, 1, 9, 0)),
 				   Waypoint(path[2], datetime(2000, 1, 1, 13, 0))]
-		car = [Link(timedelta(minutes=45), 5.0, '')
+		car = [Link(timedelta(minutes=45), 5.0, ''),
 			   Link(timedelta(minutes=90), 10.0, '')]
 		ferry = Link(timedelta(minutes=180), 100.0, 'Ferry Operator')
 
 		segments = [
 				Segment(*car_wps[:2], link=car[0]),
-				Segment(*fer_wps, link=ferry)
+				Segment(*fer_wps, link=ferry),
 				Segment(*car_wps[2:], link=car[1]),
 				]
 		self.itin = Itinerary(segments)

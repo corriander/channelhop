@@ -1,3 +1,14 @@
+"""Module for defining locations and simple transport networks.
+
+The definition of a transport network here is crude:
+
+Given an origin in the UK and a destination in FR (this is relatively
+arbitrary but the only tested case) the transport network is a simple
+graph
+
+	origin 1...1+ UK Ports 1+...1+ FR Ports 1+...1 destination
+
+"""
 from collections import namedtuple
 from collections import defaultdict
 
@@ -8,7 +19,7 @@ class Location(_Location):
 	def __repr__(self):
 		return 'Location({!r}, {!r})'.format(self.town, self.country)
 
-
+# Recognised ferry routes
 FERRY_ROUTES = [
 		(Location('Portsmouth', 'UK'), Location('Le Havre', 'FR')),
 		(Location('Portsmouth', 'UK'), Location('St. Malo', 'FR')),
@@ -36,7 +47,7 @@ class LocationMap(defaultdict):
 		routes : dict containing list of routes (both out and rtn).
 
 	"""
-
+	# Available directly from the class.
 	ports = {}
 	ports['UK'] = set(route[0] for route in FERRY_ROUTES)
 	ports['FR'] = set(route[1] for route in FERRY_ROUTES)

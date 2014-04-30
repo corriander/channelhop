@@ -1,5 +1,6 @@
 # coding: utf-8 
 import copy
+import itertools
 from collections import defaultdict, namedtuple
 from datetime import timedelta
 from places import LocationMap
@@ -233,10 +234,19 @@ class Itinerary(list):
 		"""Destination arrival date/time."""
 		return self[-1].datetime 
 	
-	def __str__(self):
+	def pprint(self):
 		string = []
-		for i, element in enumerate(self):
-			string.append('{}.\t{}'.format(i, element))
+		for i, e in enumerate(self):
+			e_is_link = isinstance(e, Link)
+			e_is_port = (isinstance(e, Waypoint) and
+					     e.location in LocationMap.ports['ALL'])
+			if e_is_link:
+				e = '  {}'.format(e)
+			if e_is_port:
+				town = e.location.town
+				upper_town = e.location.town.upper()
+				e = str(e).replace(town, upper_town)
+			string.append('{}.\t{}'.format(i, e))
 		return '\n'.join(string)
 
 
@@ -294,19 +304,8 @@ class Route(list):
 		return (min(cost_list), max(cost_list))
 
 
-OptionBase = namedtuple('Option', 'out, rtn, cost, arrival_time')
+Option = namedtuple('Option', 'out, rtn, cost, arrival_time')
 
-class Option(OptionBase):
-	__slots__ = ()
-	def __str__(self):
-		string = ['OPTION\n---------------------------------------\n']
-		string.append('COST: \xc2\xa3{:.2f}'.format(self.cost))
-		string.append('ARRIVAL: {}'.format(self.arrival_time))
-		string.append(str(self.out))
-		string.append('')
-		string.append(str(self.rtn))
-		string.append('')
-		return '\n'.join(string)
 
 class Trip(object):
 	"""A <-> B, potentially aysmmetrical trip via channel ferries.
@@ -324,6 +323,8 @@ class Trip(object):
 		self.origin = self.lmap.origin
 		self.destination = self.lmap.destination
 		self.options = self._generate_options() 
+		self.options.sort(key=lambda x: x.cost)
+		self.total_options = len(self.options)
 
 	def _itineraries(self):
 		# generate itineraries for all routes
@@ -344,3 +345,47 @@ class Trip(object):
 					   itinerary_1[-1].datetime)
 				for itinerary_1 in self.out
 				for itinerary_2 in self.rtn]
+
+	def constrain(self, criteria, values):
+		exclude = []
+		if criteria == 'arrival':
+			datetimes = [dt + timedelta(minutes=90) for dt in values]
+			dates = [dt.date() for dt in values]
+			for option in self.options:
+				b = [option.arrival_time.date() == d for d in dates]
+				date_constrained = any(b)
+				if date_constrained:
+					dt = list(itertools.compress(datetimes, b))[0]
+					if option.arrival_time > dt:
+						exclude.append(option)
+
+		elif criteria == 'drive':
+			buf = timedelta(minutes=30) 
+			for option in self.options:
+				if option.out[-2].duration > (values[0] + buf):
+					exclude.append(option)
+
+		elif criteria == 'destdep':
+			buf = timedelta(minutes=60)
+			for option in self.options:
+				if option.rtn[0].datetime < (values[0] - buf):
+					exclude.append(option)
+
+		elif criteria == 'return':
+			buf = timedelta(minutes=60)
+			for option in self.options:
+				if option.rtn[-1].datetime > (values[0] + buf):
+					exclude.append(option)
+
+		elif criteria == 'cost':
+			buf = 10.0
+			for option in self.options:
+				if option.cost > values[0] + buf:
+					exclude.append(option)
+		
+		self.options = filter(lambda o: o not in exclude, 
+							  self.options)
+
+	def noptions(self):
+		return len(self.options)
+

@@ -5,8 +5,8 @@ from channelhop.places import LocationMap
 
 FERRY_DATA = """
 Portsmouth,Cherbourg,Operator A,2000-01-02,09:30,2000-01-02,13:00,170,0,
-Portsmouth,Le Havre,Operator B,2000-01-01,23:00,2000-01-02,08:00,75,85.5,4-berth Cabin
-Portsmouth,Le Havre,Operator B,2000-01-02,23:00,2000-01-03,08:00,106.5,110,4-berth Cabin
+Portsmouth,Le Havre,Operator B,2000-01-01,23:00,2000-01-02,08:00,75,85.5,
+Portsmouth,Le Havre,Operator B,2000-01-02,23:00,2000-01-03,08:00,106.5,110,
 Poole,Cherbourg,Operator C,2000-01-02,08:30,2000-01-02,13:00,160,0,
 Cherbourg,Portsmouth,Operator A,2000-01-04,17:00,2000-01-04,19:00,170,0,
 Cherbourg,Poole,Operator C,2000-01-04,18:30,2000-01-04,21:00,185,0,
@@ -44,7 +44,7 @@ class TestParser(unittest.TestCase):
 		self.assertIsInstance(route, exdata.CarData)
 		self.assertEqual(route.source, self.locations['A'])
 		self.assertEqual(route.distance, 40)
-		self.assertEqual(route.duration, timedelta(45*60))
+		self.assertEqual(route.duration, timedelta(minutes=45))
 		self.assertEqual(route.cost, 8.5)
 	
 	def test_final_car_data(self):
@@ -59,7 +59,7 @@ class TestParser(unittest.TestCase):
 		self.assertIsInstance(route, exdata.CarData)
 		self.assertEqual(route.destination,
 						 self.locations['Cherbourg'])
-		self.assertEqual(route.duration, timedelta(3*3600 + 45*60))
+		self.assertEqual(route.duration, timedelta(minutes=225))
 		self.assertEqual(route.cost, 50)
 
 	def test_toll_variant(self):
@@ -67,7 +67,7 @@ class TestParser(unittest.TestCase):
 		route = self.cardata[4]
 		self.assertIsInstance(route, exdata.CarData)
 		self.assertEqual(route.destination, self.locations['B'])
-		self.assertEqual(route.duration, timedelta(4 * 3600 + 30 * 60))
+		self.assertEqual(route.duration, timedelta(minutes=270))
 		self.assertEqual(route.cost, 90)
 		self.assertEqual(route.note, 'tolls')
 
@@ -112,7 +112,7 @@ class TestParser(unittest.TestCase):
 		"""
 		route = self.ferrydata[2]
 		self.assertEqual(route.cost, 75+85.5)
-		self.assertEqual(route.note, '4-berth Cabin')
+		self.assertEqual(route.note, 'Cabin')
 
 		# Check that the non-accomodation variant has correct cost
 		route = self.ferrydata[1]

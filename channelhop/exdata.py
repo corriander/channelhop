@@ -87,6 +87,7 @@ class Parser(object):
 						'')]
 		if accom_cost > 0:
 			cost += accom_cost
+			note += 'Cabin'
 			fd.append(FerryData(source, destination, operator, dep,
 								arr, cost, note))
 		return fd

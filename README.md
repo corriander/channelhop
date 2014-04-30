@@ -36,7 +36,7 @@ miscellaneous preferences. Every year this process is streamlined a
 smidgen; this is the next stage in evolution beyond a laborious,
 incomplete and error-prone spreadsheet-based approach.
 
-It's suprising how many combinations of options there can be for a
+It's surprising how many combinations of options there can be for a
 simple A-to-B return trip. This year there are nearly 300 permutations
 (and we wondered why it was always such a headache) which was swiftly
 chopped to 30 distinctly-presented choices based on some simple

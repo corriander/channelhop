@@ -1,4 +1,20 @@
 # coding: utf-8 
+"""Module for travel-related classes.
+
+The primary access-point here is Trip. Given a list of CarData and
+FerryData objects (in the exdata module) and an origin and
+destination, the Trip class will generate possible route permutations
+and provide means for constraining the results.
+
+Otherwise, the classes in here build on those provided by the `places`
+module (e.g. Location) by providing temporal attributes and the
+ability to construct compound data structures for the use-case
+journey type.
+
+The module is a bit crude at the moment because its served its purpose
+for now.
+
+"""
 import copy
 import itertools
 from collections import defaultdict, namedtuple
@@ -47,7 +63,7 @@ class Waypoint(object):
 							 		self._format_dt())
 
 	def _format_dt(self):
-		# String-format datetime 
+		# String-format datetime
 		dt = self.datetime
 		if not dt:
 			return ''
@@ -59,6 +75,7 @@ class Waypoint(object):
 								 dt.minute)
 
 	def __eq__(self, other):
+		# Equality is assumed when both locations and datetimes match.
 		if (self.location == other.location and
 		    self.datetime == other.datetime):
 			return True
@@ -148,6 +165,8 @@ class Segment(object):
 
 	@staticmethod
 	def _validate_input(start, end, link):
+		# Make sure the Segment is valid (link duration is compatible
+		# with start/end datetimes.)
 		if all((start.datetime, end.datetime, link.duration)):
 
 			switch = {
@@ -171,6 +190,11 @@ class Segment(object):
 
 
 class SegmentMap(defaultdict):
+	"""A mapping of location-pairs to lists of Segments.
+
+	Segments are generated from externally sourced data.
+
+	"""
 	def __init__(self, list_car_data, list_ferry_data):
 		defaultdict.__init__(self, list)
 		for route in list_car_data:
@@ -235,6 +259,7 @@ class Itinerary(list):
 		return self[-1].datetime 
 	
 	def pprint(self):
+		"""Multi-line, formatted string overview of the itinerary."""
 		string = []
 		for i, e in enumerate(self):
 			e_is_link = isinstance(e, Link)
@@ -327,7 +352,7 @@ class Trip(object):
 		self.total_options = len(self.options)
 
 	def _itineraries(self):
-		# generate itineraries for all routes
+		# Generate itineraries for all routes (and their variants).
 		d = {}
 		for direction in ('OUT', 'RTN'):
 			route_list = [Route(path, self.segmap)
@@ -339,6 +364,7 @@ class Trip(object):
 		return d
 
 	def _generate_options(self):
+		# List of possible (out, rtn) itinerary combinations.
 		return [Option(itinerary_1, 
 					   itinerary_2, 
 					   (itinerary_1.cost + itinerary_2.cost)/4,
@@ -347,6 +373,27 @@ class Trip(object):
 				for itinerary_2 in self.rtn]
 
 	def constrain(self, criteria, values):
+		"""Constrain the trip based on specified criteria.
+
+		Criteria is a recognised string, values is a sequence of
+		criteria-dependent types. Most criteria only look at the first
+		element.
+
+		Supported criteria are
+
+		  - Destination arrival datetime. Values are multiple
+			datetimes for different arrival dates.
+		  - Destination departure datetime.
+		  - Origin arrival datetime.
+		  - Post-ferry outward driving duration.
+		  - Cost
+
+		Adding criteria truncates the available options. Relaxing
+		criteria requires a new Trip instance.
+
+		"""
+		# This is a bit of a bespoke, inflexible implementation based
+		# on current need.
 		exclude = []
 		if criteria == 'arrival':
 			datetimes = [dt + timedelta(minutes=90) for dt in values]
@@ -387,5 +434,6 @@ class Trip(object):
 							  self.options)
 
 	def noptions(self):
+		"""Return the number of options."""
 		return len(self.options)
 

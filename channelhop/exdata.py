@@ -1,3 +1,14 @@
+"""Module for handling externally sourced data.
+
+Warning: This module is a bit bunk and is begging for a re-think. It
+was a victim of changing program structure but does provide a very
+roundabout way of turning a set of route/ferry records into something
+usable by the rest of the program. In future, it's likely this is the
+place for interfacing with OpenStreetMap or similar to generalise the
+use-case and reduce the (albeit quite limited) data mining required by
+the user (i.e. me).
+
+"""
 import os
 import csv
 from collections import namedtuple, defaultdict
@@ -22,6 +33,7 @@ CarData = namedtuple('CarData',
 					  'note'])
 
 class Parser(object):
+	"""Convert spreadsheet/CSV style data into native form."""
 	def __init__(self, lmap, tests=False):
 
 		if tests:

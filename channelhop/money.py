@@ -13,6 +13,22 @@ URI_XML = 'channelhop/data/exchange_rates.xml' # FIXME: dynamic uri
 # TODO: Build in some sort of fuel cost retrieval and move that out of
 # the vehicle module.
 
+
+class Expense(object):
+	"""A one-off expense.
+
+	Optionally associated with a person, with optional date,
+	description and currency for detail purposes.
+	"""
+	def __init__(self, value, date=None, description=None, owner=None,
+				 currency='GBP'):
+		# TODO: Probably want some type-checking here.
+		self.value = value
+		self.description = description
+		self.date = date
+		self.owner = owner
+
+
 # Functions
 def get_exchange_rates():
 	"""Get exchange rates from the European Central Bank daily feed.

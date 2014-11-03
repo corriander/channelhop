@@ -10,20 +10,6 @@ from quantities import units, Quantity
 URI_ECB = 'http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
 URI_XML = 'channelhop/data/exchange_rates.xml' # FIXME: dynamic uri
 
-# Data
-exchange_rates = get_exchange_rates()
-supported_currencies = exchange_rates.keys()
-
-# Configure units to represent currency (in a bit of a hacky, but
-# valid, manner).
-# TODO: Build in shortcuts (euro symbol, gbp symbol, etc.)
-units.define('EUR = [currency]')	# Base unit.
-for exr in exchange_rates.items()
-	units.define('{} = EUR / {}'.format(*exr))
-
-units.define('pence = 100 * GBP = p')
-units.define('cent = 100 * EUR = c')	# Overwrite speed of light...
-
 # TODO: Build in some sort of fuel cost retrieval and move that out of
 # the vehicle module.
 
@@ -43,14 +29,29 @@ def get_exchange_rates():
 	if (date.today() > date.fromtimestamp(os.path.getmtime(URI_XML))):
 		urllib.urlretrieve(URI_ECB, URI_XML)
 
-    tree = ElementTree(file=URI_XML)
-    root = tree.getroot()
+	tree = ElementTree(file=URI_XML)
+	root = tree.getroot()
 
 	# Map the exchange rates to a dictionary and return it. Rates are
 	# in 'Cube' elements with currency (and rate) attributes under the
 	# default namespace.
-    return {
-        element.attrib['currency'] : element.attrib['rate']
-        for element in tree.findall('.//ns:Cube[@currency]',
+	return {
+		element.attrib['currency'] : element.attrib['rate']
+		for element in tree.findall('.//ns:Cube[@currency]',
 									{'ns' : root.nsmap[None]})
-    }
+	}
+
+# Data
+exchange_rates = get_exchange_rates()
+supported_currencies = exchange_rates.keys()
+
+# Configure units to represent currency (in a bit of a hacky, but
+# valid, manner).
+# TODO: Build in shortcuts (euro symbol, gbp symbol, etc.)
+units.define('EUR = [currency]')	# Base unit.
+for exr in exchange_rates.items():
+	units.define('{} = EUR / {}'.format(*exr))
+
+units.define('pence = 100 * GBP = p')
+units.define('cent = 100 * EUR = c')	# Overwrite speed of light...
+

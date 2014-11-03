@@ -6,13 +6,10 @@ from quantities import units, Quantity
 # Define mpg
 units.define('mpg = miles per gallon')
 
-# Define some currencies for use in fuel costs
-# TODO: Move to an external currency/finance module.
-units.define('GBP = [currency]')
-units.define('pence = GBP / 100 = p')
-
+# Constants
 FUELPRICE = Quantity(127, 'p/L')
 
+# Classes
 class FuelTank(object):
 	"""Model of a vehicle fuel tank.
 

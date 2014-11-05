@@ -81,6 +81,16 @@ class Expense(Cost):
 	Expenses represent actual transactions.
 	"""
 	def __init__(self, person, description, amount, currency='GBP'):
+		"""Arguments
+
+			person : trip.Person Instance
+			description : string describing the transaction.
+			amount : either numerical value or Quantity.
+			currency : currency to represent the cost.
+		"""
+		# Enforce expenses as a negative value (outgoings from the
+		# person).
+		amount = -1 * abs(amount)
 		Cost.__init__(self, description, amount, currency)
 		self.person = person
 

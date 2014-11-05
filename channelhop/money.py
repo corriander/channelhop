@@ -14,19 +14,75 @@ URI_XML = 'channelhop/data/exchange_rates.xml' # FIXME: dynamic uri
 # the vehicle module.
 
 
-class Expense(object):
-	"""A one-off expense.
+class Cost(object):
+	"""A one-off cost, e.g. hotel bill, fuel cost.
 
-	Optionally associated with a person, with optional date,
-	description and currency for detail purposes.
+	Costs are abstract, they don't represent any actual transaction.
+	Example applications include estimated fuel cost, or a hotel bill
+	yet to be paid.
+
+	Costs are a crude wrapper around the Quantity class adding
+	descriptions.
 	"""
-	def __init__(self, value, date=None, description=None, owner=None,
-				 currency='GBP'):
-		# TODO: Probably want some type-checking here.
-		self.value = value
-		self.description = description
-		self.date = date
-		self.owner = owner
+	def __init__(self, description, amount, currency='GBP',
+				 person=None):
+		"""Arguments
+
+			description : string describing the transaction.
+			amount : either numerical value or Quantity.
+			currency : currency to represent the cost.
+		"""
+		# If the amount is a Quantity with magnitude and units,
+		# convert it to the local currency.
+		if isinstance(amount, Quantity):
+			self._quantity = amount
+		else:
+			self._quantity = Quantity(amount, currency)
+
+		self._description = description
+		self._currency = currency
+		self.person = person
+
+	@property
+	def description(self):
+		return self._description
+
+	@property
+	def currency(self):
+		return self._currency
+
+	def assign(self, people):
+		"""Assign cost to a number of people.
+
+		Arguments
+
+			people : sequence of Person instances.
+		"""
+		no_people = len(people)
+		for person in people:
+			person.add_cost(self.description, *self._quantity)
+
+
+	def __str__(self):
+		# Append description to Quantity string.
+		return '{} | {}'.format(self._quantity, self.description)
+
+	def __repr__(self):
+		# Return a programmatic representation
+		return '<{}({!r}, {!r}, {!r})>'.format(self.__class__.__name__,
+											   self.description,
+											   self._quantity.magnitude,
+											   self.currency)
+
+
+class Expense(Cost):
+	"""A one-off expense incurred by a person, e.g. a fuel bill.
+
+	Expenses represent actual transactions.
+	"""
+	def __init__(self, person, description, amount, currency='GBP'):
+		Cost.__init__(self, description, amount, currency)
+		self.person = person
 
 
 # Functions

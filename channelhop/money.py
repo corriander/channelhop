@@ -42,8 +42,16 @@ def get_exchange_rates():
 	"""
 	# if local copy ECB exchange rates xml is older than a day,
 	# re-fetch
-	if (date.today() > date.fromtimestamp(os.path.getmtime(URI_XML))):
-		urllib.urlretrieve(URI_ECB, URI_XML)
+
+	fetch = False
+	try:
+		xml_age = date.fromtimestamp(os.path.getmtime(URI_XML))
+		if (date.today() > xml_age):
+			fetch = True
+	except IOError:
+		fetch = True
+
+	if fetch: urllib.urlretrieve(URI_ECB, URI_XML)
 
 	tree = ElementTree(file=URI_XML)
 	root = tree.getroot()

@@ -1,7 +1,9 @@
 import unittest
-from channelhop.trip import Person
+from channelhop.trip import Person, Trip, TripDefError
+from channelhop.vehicle import Car, FUELPRICE
 from channelhop.money import Expense, Cost
 from channelhop.quantities import units, Quantity
+
 
 class TestPerson(unittest.TestCase):
 	"""Exercises the Person class.
@@ -85,6 +87,224 @@ class TestPerson(unittest.TestCase):
 
 	# bill is just a list of expenses, the import bit is the balance.
 
+
+class TestTrip(unittest.TestCase):
+	"""Exercise Trip class."""
+	def setUp(self):
+		"""Define a trip in a car with a 60 L tank and 0.1 L/km."""
+		self.trip = Trip('test trip', Car(60, 0.1))
+		self.trip.add_person(Person('A'))
+
+	def test_add_wp_no_people(self):
+		"""Adding a waypoint before adding people shouldn't work."""
+		trip = Trip('test', Car(1,1))
+		self.assertRaises(TripDefError, trip.add_wp('A'))
+
+	def test_add_wp(self):
+		"""Adding a waypoint with at least one person should work.
+
+		The waypoint should be associated with all people on the trip.
+		"""
+		self.trip.add_wp('A')
+		self.assertEqual(self.trip._people,
+						 self.trip._items[-1].people)
+
+	def test_last_wp_single_item(self):
+		"""Check the last_wp attribute returns the only waypoint."""
+		self.trip.add_wp('A')
+		self.assertEqual(self.trip.last_wp, self.trip._items[0])
+
+	def test_link_no_wp(self):
+		"""A link/travel shouldn't be addable without a waypoint."""
+		self.assertRaises(TripDefError, self.trip.travel(50, 'km'))
+
+	def test_add_wp_and_link(self):
+		"""Adding a waypoint and a link should work.
+
+		The waypoint and the link should both be associated with all
+		people on the trip.
+		"""
+		self.trip.add_wp('A')
+		self.trip.travel(50, 'km')
+
+		# Check that the trip elements so far are as expected.
+		self.assertEqual(len(self.trip._items), 2)
+		self.assertEqual(self.trip._items[0].location, 'A')
+		self.assertEqual(self.trip._items[1].distance.magnitude, 50)
+
+		# Check the travel segment inherited the people from the last
+		# waypoint.
+		self.assertIs(self.trip._items[1].people,
+					  self.trip._items[0].people)
+
+	def test_last_wp_where_last_item_is_link(self):
+		"""For a waypoint + link, last_wp should return the wp."""
+		self.trip.add_wp('A')
+		self.trip.travel(50, 'km')
+		self.assertEqual(self.trip.last_wp.location, 'A')
+
+	def test_add_cost(self):
+		"""Adding a cost to the last waypoint should work."""
+		self.trip.add_wp('A')
+		self.trip.add_cost('Parking', 5., 'GBP')
+
+		self.assertEqual(self.trip.last_wp.cost._quantity,
+						 Quantity(5., 'GBP'))
+
+	def test__assign_cost_single_wp_single_person(self):
+		"""Distributes cost of a Trip item to its people."""
+		self.trip.add_wp('A')
+
+		# Circumvent the add_cost method here as it calls _assign_cost
+		self.trip.last_wp.cost = Cost('Parking', 5., 'GBP')
+		self.trip._assign_cost(self.trip.last_wp, 'Parking')
+
+		self.assertEqual(self.trip.last_wp.people.pop().balance,
+						 Quantity(5., 'GBP'))
+
+	def test__assign_cost_single_wp_two_people(self):
+		people = list(self.trip._people)[0], Person('B')
+		self.trip.add_person(people[1])
+		self.trip.add_wp('A')
+		self.trip.last_wp.cost = Cost('Parking', 5., 'GBP')
+		self.trip._assign_cost(self.trip.last_wp, 'Parking')
+
+		self.assertEqual(people[0].balance, Quantity(2.50, 'GBP'))
+		self.assertEqual(people[1].balance, Quantity(2.50, 'GBP'))
+
+	def test_add_person_mid_route(self):
+		"""Check a person is successfully added.
+
+		Primarily, this is to ensure the person doesn't incur costs
+		from trip elements prior to their joining.
+		"""
+		pA = list(self.trip._people)[0]
+		self.trip.add_wp('A')
+		self.trip.add_cost('ParkingA', 5)
+		self.trip.travel(50, 'km')
+		p = Person('B')
+		self.trip.add_person(p)
+		self.trip.add_wp('B')
+		self.trip.add_cost('ParkingB', 10)
+
+		# Sanity checks to make sure they are actually present for the
+		# right parts of the trip.
+		self.assertNotIn(p, self.trip._items[0].people)
+		self.assertNotIn(p, self.trip._items[1].people)
+		self.assertIn(p, self.trip._items[2].people)
+
+		# Persons A and B should both have costs associated with them
+		# here. As B has been removed before the second waypoint, the
+		# system assumes they don't incur this cost.
+		self.assertEqual(p.balance, Quantity(5.0, 'GBP'))
+		self.assertEqual(pA.balance, Quantity(10.0, 'GBP'))
+
+	def test_remove_person_mid_route(self):
+		"""Check a person is successfully removed.
+
+		Primarily, this is to ensure the person doesn't incur costs
+		from the elements following their removal.
+		"""
+		p = Person('B')
+		self.trip.add_person(p)
+		self.trip.add_wp('A')
+		self.trip.add_cost('ParkingA', 5)
+		self.trip.travel(50, 'km')
+		self.trip.remove_person(p)
+		self.trip.add_wp('B')
+		self.trip.add_cost('ParkingB', 10)
+
+		# Sanity checks to make sure they are actually present for the
+		# right parts of the trip.
+		self.assertIn(p, self.trip._items[0].people)
+		self.assertIn(p, self.trip._items[1].people)
+		self.assertNotIn(p, self.trip._items[2].people)
+
+		# Persons A and B should both have costs associated with them
+		# here. As B has been removed before the second waypoint, the
+		# system assumes they don't incur this cost.
+		self.assertEqual(p.balance, Quantity(2.50, 'GBP'))
+		self.assertEqual(self.trip._people.pop().balance,
+						 Quantity(12.50, 'GBP'))
+
+	def test_assign_fuel_costs_single_person_and_link(self):
+		"""Fuel costs assigned to a single person, single Link."""
+		trip = self.trip
+
+		p = list(trip._people)[0]
+
+		# define the trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+
+		trip.assign_fuel_costs()
+
+		expected = Quantity(50, 'km') * trip.vehicle.fuel_cost
+		self.assertEqual(p.balance, expected)
+
+	def test_assign_fuel_costs_single_link_and_two_people(self):
+		"""Fuel costs assigned to two people over a single Link."""
+		trip = self.trip
+
+		people = list(trip._people)[0], Person('B')
+
+		# define the trip
+		trip.add_person(people[1])
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+
+		trip.assign_fuel_costs()
+
+		expected = Quantity(25, 'km') * trip.vehicle.fuel_cost
+		self.assertEqual(people[0].balance, expected)
+		self.assertEqual(people[1].balance, expected)
+
+	def test_assign_fuel_costs_single_person_two_links(self):
+		"""Fuel cost assignment for an individual, 2 part journey."""
+		trip = self.trip
+
+		p = list(trip._people)[0]
+
+		# define the trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		trip.assign_fuel_costs()
+
+		expected = Quantity(150, 'km') * trip.vehicle.fuel_cost
+		self.assertEqual(p.balance, expected)
+
+	def test_calculate_fuel_costs_no_arg(self):
+		"""Fuel costs assigned to people based on estimates."""
+
+		pA = list(self.trip._people)[0]
+		# Define the trip
+		self.trip.add_wp('A')
+		self.trip.travel(50, 'km')
+		pB = Person('B')
+		self.trip.add_person(pB)
+		self.trip.add_wp('B')
+		self.trip.travel(100, 'km')
+		self.trip.add_wp('C')
+
+		# Calculate fuel costs.
+		self.trip.assign_fuel_costs()
+
+		# Expected costs per person.
+		eta = self.trip.vehicle.fuel_cost.to('GBP/km')
+		expected_A = Quantity(100, 'km') * eta
+		expected_B = Quantity(50, 'km') * eta
+
+		# Person A should have 2 cost estimates, Person B 1.
+		self.assertAlmostEqual(pA.balance.magnitude,
+							   expected_A.magnitude,
+							   places=2)
+		self.assertAlmostEqual(pB.balance.magnitude,
+							   expected_B.magnitude,
+							   places=2)
 
 
 if __name__ == '__main__':

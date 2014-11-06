@@ -142,6 +142,6 @@ units.define('EUR = [currency]')	# Base unit.
 for exr in exchange_rates.items():
 	units.define('{} = EUR / {}'.format(*exr))
 
-units.define('pence = 100 * GBP = p')
-units.define('cent = 100 * EUR = c')	# Overwrite speed of light...
+units.define('pence = 0.01 * GBP = p')
+units.define('cent = 0.01 * EUR = c')	# Overwrite speed of light...
 

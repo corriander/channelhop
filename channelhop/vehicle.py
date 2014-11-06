@@ -1,6 +1,7 @@
 """Module for vehicle representation."""
 # TODO: Class (and supporting) for Car, providing fuel efficiency,
 # etc.
+import money	# make sure it's loaded first.
 from quantities import units, Quantity
 
 # Define mpg

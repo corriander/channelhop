@@ -1,71 +1,105 @@
 import unittest
 
+from channelhop import Quantity
 from channelhop.money import Cost
-from channelhop.quantities import units, Quantity
-
+from channelhop.person import Person
 
 class TestCurrency(unittest.TestCase):
 	# This is a bit tricky to test for without some static rates so
 	# let's keep it stupid and simple.
 	def test_eur_gbp(self):
-		self.assertLess(1 * units.EUR, 1 * units.GBP)
+		self.assertLess(Quantity(1, 'EUR'), Quantity(1 * 'GBP'))
 
 
 class TestCost(unittest.TestCase):
 	"""Exercise the Cost class."""
 	sample = Cost('test123', 25., 'GBP')
 
-	def test_init(self):
-		"""Tests various combinations of init parameters."""
-		# Check omitting the amount raises a type error
-		self.assertRaises(TypeError, Cost, '')
-		# Check omitting the description raises a type error
-		self.assertRaises(TypeError, Cost, 25.)
-
-		# Check with and without currency
-		c = Cost('test', 10.)
+	# Test initialisation
+	def test_init_default_currency(self):
+		"""Omitting the currency should default to 'GBP'."""
+		c = Cost('', 1.)
 		self.assertEqual(c.currency, 'GBP')
-		c = Cost('test', 13., 'EUR')
+
+	def test_init_with_currency(self):
+		"""Specifying a currency should override the default."""
+		c = Cost('', 1., 'EUR')
 		self.assertEqual(c.currency, 'EUR')
 
-		# Check a Quantity can be passed directly. This should ignore
-		# the currency argument.
-		c = Cost('test', Quantity(13., 'EUR'))
-		self.assertEqual(c._quantity.magnitude, 13.)
-		c = Cost('test', Quantity(10., 'GBP'), 'EUR')
-		self.assertEqual(c._quantity.magnitude, 10.)
+	def test_init_with_person(self):
+		"""Specifying a person should relate the Cost to them."""
+		p = Person('human')
+		c = Cost('test', 25., person=p)
+		self.assertIs(c.person, p)
+		self.assertIn(c, p.bill)
 
-	# Check attributes
-	def test_description(self):
-		"""Checks the description is retrievable."""
-		self.assertEqual(self.sample.description, 'test123')
+	# Nothing fancy in the attributes. Add tests if they get extended.
 
-	def test_currency(self):
-		"""Checks the currency is retrievable."""
-		self.assertEqual(self.sample.currency, 'GBP')
-
-	# Check methods.
+	# ----------------------------------------------------------------
+	# Test methods.
+	# ----------------------------------------------------------------
 	def test_assign(self):
 		"""Check the cost can be assigned to people."""
-		self.skipTest("People not implemented.")
+		people = Person('A'), Person('B')
+		self.sample.assign(people)
+
+		self.assertEqual(people[0].balance(), Quantity(25, 'GBP'))
+		self.assertItemsEqual((self.sample,), people[0].bill)
+		self.assertEqual(people[1].balance(), Quantity(25, 'GBP'))
+		self.assertItemsEqual((self.sample,), people[1].bill)
+
+	def test_split_assign(self):
+		"""Splits the cost into equal parts and assigns to people."""
+		people = Person('A'), Person('B')
+		self.sample.split_assign(people)
+
+		self.assertEqual(people[0].balance(), Quantity(12.5, 'GBP'))
+		self.assertItemsEqual((self.sample / 2,), people[0].bill)
+		self.assertEqual(people[1].balance(), Quantity(12.5, 'GBP'))
+		self.assertItemsEqual((self.sample / 2,), people[1].bill)
+
+	def test_quantify(self):
+		"""Converts the Cost instance into a plain Quantity."""
+		quantified = self.sample._quantify()
+		self.assertIsInstance(quantified, Quantity)
+		self.assertNotIsInstance(quantified, Cost)
+		self.assertEqual(quantified, Quantity(25., 'GBP'))
 
 	def test_str(self):
 		"""Check the string representation is as expected."""
-		self.assertEqual(str(self.sample), '25.0 GBP | test123')
+		self.assertEqual(str(self.sample), '   25.00 GBP | test123')
 
 	def test_repr(self):
 		"""Check the programmatic representation is as expected."""
 		self.assertEqual(repr(self.sample),
 						 "<Cost('test123', 25.0, 'GBP')>")
 
+	# ----------------------------------------------------------------
+	# Test arithmetic operators.
+	# ----------------------------------------------------------------
+	def test_div_by_int(self):
+		quantity = self.sample / 2
+		self.assertEqual(quantity, Quantity(12.50, 'GBP'))
 
-class TestExpense(unittest.TestCase):
-	"""Exercise the Expense class.
+	def test_div_by_quantity(self):
+		quantity = self.sample / Quantity(10., 'm')
+		self.assertEqual(quantity, Quantity(2.5, 'GBP/m'))
 
-	Expenses represent actual transactions/costs incurred by a person.
-	"""
-	def test_init(self):
-		self.skipTest("Person not implemented yet.")
+	def test_add_to_cost(self):
+		quantity = self.sample + self.sample
+		self.assertEqual(quantity, Quantity(50.00, 'GBP'))
+
+	def test_add_to_zero(self):
+		cost = self.sample + 0
+		self.assertEqual(cost, self.sample)
+
+	def test_add_to_quantity(self):
+		quantity = self.sample + Quantity(5., 'GBP')
+		self.assertEqual(quantity, Quantity(30., 'GBP'))
+
+	def test_sum(self):
+		costs = [self.sample, self.sample, self.sample]
+		self.assertEqual(sum(costs), Quantity(75., 'GBP'))
 
 
 if __name__ == '__main__':

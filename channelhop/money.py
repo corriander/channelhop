@@ -4,7 +4,7 @@ import urllib
 
 from lxml.etree import ElementTree
 
-from quantities import units, Quantity
+from . import units, Quantity
 
 # Constants
 URI_ECB = 'http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
@@ -14,7 +14,7 @@ URI_XML = 'channelhop/data/exchange_rates.xml' # FIXME: dynamic uri
 # the vehicle module.
 
 
-class Cost(object):
+class Cost(Quantity):
 	"""A one-off cost, e.g. hotel bill, fuel cost.
 
 	Costs are abstract, they don't represent any actual transaction.
@@ -24,32 +24,25 @@ class Cost(object):
 	Costs are a crude wrapper around the Quantity class adding
 	descriptions.
 	"""
-	def __init__(self, description, amount, currency='GBP',
-				 person=None):
+	def __new__(cls, description, amount, currency='GBP',
+				person=None):
 		"""Arguments
 
 			description : string describing the transaction.
 			amount : either numerical value or Quantity.
 			currency : currency to represent the cost.
 		"""
-		# If the amount is a Quantity with magnitude and units,
-		# convert it to the local currency.
-		if isinstance(amount, Quantity):
-			self._quantity = amount
-		else:
-			self._quantity = Quantity(amount, currency)
+		print amount, currency
+		inst = Quantity.__new__(cls, amount, currency)
 
-		self._description = description
-		self._currency = currency
-		self.person = person
+		# Add metadata to instance and, if necessary, associate.
+		inst.description = description
+		if person is not None:
+			inst.assign((person,))
+			inst.person = person
+		inst.currency = currency
 
-	@property
-	def description(self):
-		return self._description
-
-	@property
-	def currency(self):
-		return self._currency
+		return inst
 
 	def assign(self, people):
 		"""Assign cost to a number of people.
@@ -58,20 +51,60 @@ class Cost(object):
 
 			people : sequence of Person instances.
 		"""
-		no_people = len(people)
 		for person in people:
-			person.add_cost(self.description, *self._quantity)
+			person._bill.append(self)
 
+	def split_assign(self, people):
+		"""Divide cost equally and assign to a number of people.
+
+		Arguments
+
+			people : sequence of Person instances.
+		"""
+		n_people = len(people)
+		cost = self / n_people
+		cost.description = ', '.join((self.description,
+									  '/ {} people'.format(n_people)))
+		for person in people:
+			person._bill.append(cost)
+
+	def __div__(self, other):
+		if isinstance(other, (int, float, Quantity)):
+			q_self = Quantity(self.magnitude, self.units)
+			return q_self / other
+		else:
+			fmtstr = "Division of {} by {} unsupported."
+			msg = fmtstr.format(self.__class__, type(other))
+			raise TypeError(msg)
+	__rdiv__ = __div__
+
+	def __add__(self, other):
+		if isinstance(other, Cost):
+			return self._quantify() + other._quantify()
+		elif isinstance(other, Quantity):
+			return self._quantify() + other
+		elif other == 0:
+			return self
+		else:
+			fmtstr = "Addition of {} to {} unsupported."
+			msg = fmtstr.format(self.__class__, type(other))
+			raise TypeError(msg)
+	__radd__ = __add__
+
+	def _quantify(self):
+		# Return Cost instance as a plain quantity.
+		return Quantity(self.magnitude, self.units)
 
 	def __str__(self):
 		# Append description to Quantity string.
-		return '{} | {}'.format(self._quantity, self.description)
+		return '{} | {}'.format(Quantity.__str__(self),
+								self.description)
 
 	def __repr__(self):
 		# Return a programmatic representation
 		return '<{}({!r}, {!r}, {!r})>'.format(self.__class__.__name__,
 											   self.description,
-											   self._quantity.magnitude,
+											   self.magnitude,
 											   self.currency)
 
 

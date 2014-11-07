@@ -24,17 +24,17 @@ class Person(object):
 	def __init__(self, name):
 		"""Instantiate a person with a unique name."""
 		self.name = name
-		self._items = set()	# container for cost-like items.
+		self._items = list()	# container for cost-like items.
 
 	def add_expense(self, *args, **kwargs):
 		("""Associate a new Expense instance with a person.""" +
 		 '\n\n' + Expense.__init__.__doc__)
-		self._items.add(Expense(self, *args, **kwargs))
+		self._items.append(Expense(self, *args, **kwargs))
 
 	def add_cost(self, *args, **kwargs):
 		("""Associate a new Cost instance with a person.""" +
 		 '\n\n' + Cost.__init__.__doc__)
-		self._items.add(Cost(*args, **kwargs))
+		self._items.append(Cost(*args, **kwargs))
 
 	@property
 	def balance(self):
@@ -68,6 +68,51 @@ class Trip(object):
 		self._items = []
 		self._people = set()
 
+	# ----------------------------------------------------------------
+	# Properties
+	# ----------------------------------------------------------------
+	@property
+	def distance(self):
+		"""Total trip distance."""
+		return sum(item.distance
+				   for item in self._items
+				   if isinstance(item, Link))
+
+	@property
+	def fuel_cost_estimate(self):
+		"""Estimated overall fuel cost."""
+		return sum(item.cost._quantity
+				   for item in self._items
+				   if isinstance(item, Link))
+
+	@property
+	def fuel_cost(self):
+		"""Actual fuel cost."""
+		return self._fuel_cost
+	@fuel_cost.setter
+	def fuel_cost(self, value):
+		if not isinstance(value, Quantity):
+			value = Quantity(value, 'GBP')
+		self._fuel_cost = value
+
+	@property
+	def last_wp(self):
+		"""Fetch the last waypoint defined."""
+		for item in reversed(self._items):
+			if isinstance(item, Waypoint):
+				return item
+
+	# ----------------------------------------------------------------
+	# API methods
+	# ----------------------------------------------------------------
+	def add_person(self, person):
+		"""Add a person to the trip."""
+		self._people.add(person)
+
+	def remove_person(self, person):
+		"""Remove a person from the trip."""
+		self._people.remove(person)
+
 	def add_wp(self, *args, **kwargs):
 		wp = Waypoint(*args, **kwargs)
 		wp.people = set(self._people)
@@ -81,6 +126,12 @@ class Trip(object):
 		 'on the trip. People must be added before adding a Waypoint '
 		 'if they are to be associated (or removed before if not).')
 	))
+
+	def add_cost(self, *args, **kwargs):
+		"""Assign a cost to the last Waypoint added."""
+		last_element = self._get_last_waypoint()
+		last_element.cost = Cost(*args, **kwargs)
+		self._assign_cost(last_element, last_element.cost.description)
 
 	def travel(self, distance, units='miles', duration=None):
 		"""Travel a specified distance from the previous Waypoint.
@@ -120,20 +171,45 @@ class Trip(object):
 		ln.distance = distance
 		ln.people = last_element.people
 
-	# FIXME: Put this in the vehicle/Car class
-	def _estimate_fuel_cost(self, distance):
-		# Estimate fuel cost for a distance (type: [length] quantity)
-		return self.vehicle.fuel_cost * distance
+	def fuel_breakdown(self):
+		"""Itemised breakdown of fuel costs over the journey.
 
-	@staticmethod
-	def _assign_cost(item, name):
-		# Assign equal share of cost to all people present.
-		n = len(item.people)
-		for person in item.people:
-			person.add_cost(name + ' / {:d} people'.format(n),
-						    item.cost._quantity / n)
+		Returns a list of tuples containing distance and fuel cost.
+		`fuel_cost_estimate` is used if `fuel_cost` is not set.
+		"""
+		breakdown = []
+		for item in self._items:
 
-	def assign_fuel_costs(self, real_cost=0):
+			# Fuel only gets consumed in travel elements
+			if not isinstance(item, Link):
+				continue
+
+			# NOTE: Fuel consumption is currently treated as a
+			# constant, so we can use the proportional distance to
+			# evaluate cost/consumption for a particular segment.
+			fraction = (item.distance / self.distance)
+			try:
+				overall_fuel_cost = self.fuel_cost
+			except AttributeError:
+				overall_fuel_cost = self.fuel_cost_estimate
+
+			breakdown.append((item.distance,
+							  fraction * overall_fuel_cost,
+							  len(item.people))
+			)
+
+		return breakdown
+
+	def pretty_fuel_breakdown(self):
+		"""Human-readable fuel breakdown, returns a string."""
+		strings = []
+		for item in self.fuel_breakdown():
+			d, c, n = item
+			string = "{} | {}, {}".format(c, d, n)
+			strings.append(string)
+		return '\n'.join(strings)
+
+	def assign_fuel_costs(self, real_cost=0, currency='GBP'):
 		"""Assign fuel costs to trip members proportionally.
 
 		If a real cost is provided, the *proportions* of the estimated
@@ -142,17 +218,27 @@ class Trip(object):
 		the estimates for each bit of the journey.
 		"""
 		if real_cost > 0:
-			raise NotImplementedError
+			fuel_cost = self.fuel_cost = Quantity(real_cost, currency)
 
 		for item in self._items:
 			if isinstance(item, Link):
 				self._assign_cost(item, 'Fuel')
 
-	def add_cost(self, *args, **kwargs):
-		"""Assign a cost to the last Waypoint added."""
-		last_element = self._get_last_waypoint()
-		last_element.cost = Cost(*args, **kwargs)
-		self._assign_cost(last_element, last_element.cost.description)
+	# ----------------------------------------------------------------
+	# Internal methods
+	# ----------------------------------------------------------------
+	@staticmethod
+	def _assign_cost(item, name):
+		# Assign equal share of cost to all people present.
+		n = len(item.people)
+		for person in item.people:
+			person.add_cost(name + ' / {:d} people'.format(n),
+						    item.cost._quantity / n, 'GBP')
+
+	# FIXME: Put this in the vehicle/Car class
+	def _estimate_fuel_cost(self, distance):
+		# Estimate fuel cost for a distance (type: [length] quantity)
+		return self.vehicle.fuel_cost * distance
 
 	# FIXME: This needs a re-think.
 	def _get_last_waypoint(self):
@@ -169,17 +255,5 @@ class Trip(object):
 
 		return last_element
 
-	@property
-	def last_wp(self):
-		"""Fetch the last waypoint defined."""
-		for item in reversed(self._items):
-			if isinstance(item, Waypoint):
-				return item
 
-	def add_person(self, person):
-		"""Add a person to the trip."""
-		self._people.add(person)
 
-	def remove_person(self, person):
-		"""Remove a person from the trip."""
-		self._people.remove(person)

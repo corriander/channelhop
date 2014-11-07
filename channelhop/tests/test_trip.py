@@ -277,6 +277,98 @@ class TestTrip(unittest.TestCase):
 		expected = Quantity(150, 'km') * trip.vehicle.fuel_cost
 		self.assertEqual(p.balance, expected)
 
+	def test_fuel_cost_estimate(self):
+		"""Calculates the overall estimated fuel cost.
+
+		This doesn't rely on people, i.e. it doesn't actually assign
+		costs.
+		"""
+		trip = self.trip
+
+		# Define the trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		# Expected fuel cost
+		expected = (Quantity(150, 'km') *
+					trip.vehicle.fuel_cost.to('GBP/km'))
+
+		self.assertEqual(trip.fuel_cost_estimate.to('GBP'), expected)
+
+	def test_fuel_cost(self):
+		"""Should return the actual fuel cost assigned manually."""
+
+		trip = self.trip
+
+		# Define the trip fuel cost in default currency
+		trip.fuel_cost = 100.
+		self.assertEqual(trip.fuel_cost.to('GBP'),
+						 Quantity(100, 'GBP'))
+
+		# Define a fuel cost in a different currency
+		trip.fuel_cost = Quantity(125, 'EUR')
+		self.assertEqual(trip.fuel_cost.to('EUR'),
+						 Quantity(125, 'EUR'))
+
+	def test_distance(self):
+		"""Overall trip distance."""
+
+		trip = self.trip
+
+		# define
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		self.assertEqual(trip.distance.to('km'), Quantity(150, 'km'))
+
+	def test_fuel_breakdown_estimated(self):
+		"""Returns a list of tuples containing fuel info.
+
+		Where a fuel cost hasn't been assigned, estimates are used.
+		"""
+
+		trip = self.trip
+
+		# define trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		# Expected
+		eta_cost = trip.vehicle.fuel_cost.to('GBP/km')
+		eta_fuel = trip.vehicle.fuel_consumption.to('L/km')
+		expected = [(q, q * eta_cost)
+					for q in (Quantity(50, 'km'), Quantity(100, 'km'))]
+
+		self.assertItemsEqual(trip.fuel_breakdown(), expected)
+
+	def test_fuel_breakdown_actual(self):
+		"""Returns a list of tuples containing fuel info."""
+
+		trip = self.trip
+
+		# define trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+		trip.fuel_cost = Quantity(45, 'GBP')
+
+		# Expected
+		expected = [(Quantity(50, 'km'), Quantity(15., 'GBP')),
+					(Quantity(100, 'km'), Quantity(30., 'GBP'))]
+
+		self.assertItemsEqual(trip.fuel_breakdown(), expected)
+
 	def test_calculate_fuel_costs_no_arg(self):
 		"""Fuel costs assigned to people based on estimates."""
 
@@ -297,6 +389,40 @@ class TestTrip(unittest.TestCase):
 		eta = self.trip.vehicle.fuel_cost.to('GBP/km')
 		expected_A = Quantity(100, 'km') * eta
 		expected_B = Quantity(50, 'km') * eta
+
+		# Person A should have 2 cost estimates, Person B 1.
+		self.assertAlmostEqual(pA.balance.magnitude,
+							   expected_A.magnitude,
+							   places=2)
+		self.assertAlmostEqual(pB.balance.magnitude,
+							   expected_B.magnitude,
+							   places=2)
+
+	def test_calculate_fuel_costs_with_override(self):
+		"""Fuel costs assigned to people based on a real cost.
+
+		The estimates here are used to evaluate the proportional cost
+		of each travel component.
+		"""
+
+		pA = list(self.trip._people)[0]
+		# Define the trip
+		self.trip.add_wp('A')
+		self.trip.travel(50, 'km')
+		pB = Person('B')
+		self.trip.add_person(pB)
+		self.trip.add_wp('B')
+		self.trip.travel(100, 'km')
+		self.trip.add_wp('C')
+
+		# Calculate fuel costs.
+		self.trip.assign_fuel_costs(100, currency='GBP')
+
+		# Expected costs per person.
+		# Here person A should be paying 2/3 of the costs based on the
+		# mileage breakdown. Person B, 1/3 of the costs.
+		expected_A = 2./3. * 100 * units.GBP
+		expected_B = 1./3. * 100 * units.GBP
 
 		# Person A should have 2 cost estimates, Person B 1.
 		self.assertAlmostEqual(pA.balance.magnitude,

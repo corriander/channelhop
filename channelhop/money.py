@@ -32,7 +32,6 @@ class Cost(Quantity):
 			amount : either numerical value or Quantity.
 			currency : currency to represent the cost.
 		"""
-		print amount, currency
 		inst = Quantity.__new__(cls, amount, currency)
 
 		# Add metadata to instance and, if necessary, associate.

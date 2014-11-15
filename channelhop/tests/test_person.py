@@ -72,6 +72,8 @@ class TestPerson(unittest.TestCase):
 
 		If this test passes, currency is being dealt with correctly.
 		"""
+		p = self.person
+
 		expense_1 = (10., 'EUR')
 		expense_2 = (15., 'GBP')
 		cost_1 = (10., 'GBP')
@@ -84,26 +86,24 @@ class TestPerson(unittest.TestCase):
 			Quantity(*expense_2)
 		).to('GBP')
 
-		self.person.add_expense('expense1', *expense_1)
-		self.person.add_expense('expense2', *expense_2)
-		self.person.add_cost('cost1', *cost_1)
-		self.person.add_cost('cost2', *cost_2)
+		p.add_expense('expense1', *expense_1)
+		p.add_expense('expense2', *expense_2)
+		p.add_cost('cost1', *cost_1)
+		p.add_cost('cost2', *cost_2)
 
 		# Check the balance is a Quantity (not a cost or expense)
-		self.assertIsInstance(self.person.balance, Quantity)
+		self.assertIsInstance(p.balance(), Quantity)
 
 		# Check it's as expected, calculated separately here.
 		msg = "{} != {} (expected; EUR = {} GBP)".format(
-				self.person.balance.to('GBP'),
+				p.balance().to('GBP'),
 				expected_balance,
 				Quantity(1, 'EUR').to('GBP').magnitude
 		)
-		self.assertAlmostEqual(self.person.balance.to('GBP').magnitude,
+		self.assertAlmostEqual(p.balance().to('GBP').magnitude,
 							   expected_balance.magnitude,
 							   places=2,
 							   msg=msg)
-
-	# bill is just a list of expenses, the important bit is the balance.
 
 
 if __name__ == '__main__':

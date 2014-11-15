@@ -13,6 +13,35 @@ class TestTrip(unittest.TestCase):
 		self.trip = Trip('test trip', Car(60, 0.1))
 		self.trip.add_person(Person('A'))
 
+	# ----------------------------------------------------------------
+	# Check attributes
+	# ----------------------------------------------------------------
+	def test_last_wp_single_waypoint(self):
+		"""Check the last_wp attribute returns the only waypoint."""
+		trip = self.trip
+
+		trip.add_wp('A')
+		self.assertEqual(trip.last_wp.location, 'A')
+
+	def test_last_wp_multiple_waypoints(self):
+		"""Check the last_wp attribute returns the latest waypoint."""
+		trip = self.trip
+
+		trip.add_wp('A')
+		trip.add_wp('B')
+		self.assertEqual(trip.last_wp.location, 'B')
+
+	def test_last_wp_where_last_item_is_link(self):
+		"""For a waypoint + link, last_wp should return the wp."""
+		trip = self.trip
+
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		self.assertEqual(trip.last_wp.location, 'A')
+
+	# ----------------------------------------------------------------
+	# Check methods
+	# ----------------------------------------------------------------
 	def test_add_wp_no_people(self):
 		"""Adding a waypoint before adding people shouldn't work."""
 		trip = Trip('test', Car(1,1))
@@ -28,13 +57,6 @@ class TestTrip(unittest.TestCase):
 		trip.add_wp('A')
 		self.assertEqual(trip._people,
 						 trip._items[-1].people)
-
-	def test_last_wp_single_item(self):
-		"""Check the last_wp attribute returns the only waypoint."""
-		trip = self.trip
-
-		trip.add_wp('A')
-		self.assertEqual(trip.last_wp, trip._items[0])
 
 	def test_link_no_wp(self):
 		"""A link/travel shouldn't be addable without a waypoint."""

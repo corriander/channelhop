@@ -29,37 +29,43 @@ class TestPerson(unittest.TestCase):
 		"""Check an expense is assigned correctly.
 
 		Expenses are represented as outgoings from the person, so they
-		have negative values.
+		have negative values. This test checks positive and negative
+		parameter values in different currencies.
 		"""
 		p = self.person
-		p.add_expense('test expense', 10., 'GBP')
+		p.add_expense('test cost', -1., 'EUR')
+		p.add_expense('test cost', 1., 'GBP')
+		p.add_expense('test cost', -1.)
 
-		# Check we have one Cost item.
-		item = p.bill[0]
+		# Check we have three items in the bill.
+		self.assertEqual(len(p.bill), 3)
 
-		self.assertEqual(len(p.bill), 1)
-		self.assertIsInstance(item, Cost)
-		# Check the cost is associated with the person.
-		self.assertIs(item.person, p)
-		# Check the cost has a negative value.
-		self.assertLess(item, 0)
+		# Check Cost instances, -ve values, and correct currency.
+		for item, currency in zip(p.bill, ('EUR', 'GBP', 'GBP')):
+			self.assertIsInstance(item, Cost)
+			self.assertLess(item.magnitude, 0)
+			self.assertEqual(item.currency, currency)
 
 	def test_add_cost(self):
 		"""Check a cost is assigned to the person correctly.
 
 		Costs have a positive value as they represent IOUs (from that
-		person) here.
+		person) here. This test checks positive and negative
+		parameter values in different currencies.
 		"""
 		p = self.person
-		p.add_cost('test cost', 7., 'EUR')
+		p.add_cost('test cost', -1., 'EUR')
+		p.add_cost('test cost', 1., 'GBP')
+		p.add_cost('test cost', 1.)
 
-		# Check we have one expense/cost
-		self.assertEqual(len(p.bill), 1)
+		# Check we have three items in the bill.
+		self.assertEqual(len(p.bill), 3)
 
-		# Check it's a Cost instance and its value is positive.
-		item = p.bill[0]
-		self.assertIsInstance(item, Cost)
-		self.assertGreater(item.magnitude, 0)
+		# Check Cost instances, +ve values, and correct currency.
+		for item, currency in zip(p.bill, ('EUR', 'GBP', 'GBP')):
+			self.assertIsInstance(item, Cost)
+			self.assertGreater(item.magnitude, 0)
+			self.assertEqual(item.currency, currency)
 
 	def test_balance(self):
 		"""Calculate the balance of costs/expenses in 2	currencies.

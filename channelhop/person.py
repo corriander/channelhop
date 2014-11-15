@@ -32,10 +32,20 @@ class Person(object):
 	def add_expense(self, description, amount, currency='GBP'):
 		"""Associate an incurred expense with the person.
 
+		Stores a Cost instance in the `bill` attribute and returns it.
 		Expenses, with respect to the person, are outgoings and
-		therefore represented with negative values.
+		therefore represented with negative values; positive values
+		will be converted.
+
+		Arguments
+		---------
+
+			description : descriptive string
+			amount : numerical value in a base currency (float, int)
+			currency : 3 letter string (optional, default: 'GBP')
 		"""
-		Cost(description, -1*abs(amount), currency, self)
+		# Create the Cost object and return it.
+		return Cost(description, -1*abs(amount), currency, self)
 
 	def add_cost(self, description, amount, currency='GBP'):
 		"""Associate a cost with the person.

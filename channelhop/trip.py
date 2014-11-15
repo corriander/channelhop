@@ -11,45 +11,6 @@ from channelhop.quantities import Quantity
 
 class TripDefError(Exception): pass
 
-class Person(object):
-	"""A trip participant.
-
-	People:
-
-	  - are present for some or all of the trip.
-	  - are responsible for a share of costs incurred.
-	  - may incur expenses (e.g. paying up front for fuel).
-	  - start off with no costs/expenses assigned.
-	"""
-	def __init__(self, name):
-		"""Instantiate a person with a unique name."""
-		self.name = name
-		self._items = list()	# container for cost-like items.
-
-	def add_expense(self, *args, **kwargs):
-		("""Associate a new Expense instance with a person.""" +
-		 '\n\n' + Expense.__init__.__doc__)
-		self._items.append(Expense(self, *args, **kwargs))
-
-	def add_cost(self, *args, **kwargs):
-		("""Associate a new Cost instance with a person.""" +
-		 '\n\n' + Cost.__init__.__doc__)
-		self._items.append(Cost(*args, **kwargs))
-
-	@property
-	def balance(self):
-		"""Balance of costs and expenses.
-
-		+ve value represents an IOU.
-		"""
-		return sum(x._quantity for x in self._items).to('GBP')
-
-	def bill(self):
-		"""Human-readable itemised bill."""
-		strings = [self.name] + map(str, self._items)
-		strings.append('	BALANCE: {}'.format(self.balance))
-		return '\n'.join(strings)
-
 
 class Trip(object):
 	"""A trip involving multiple participants and a car.
@@ -172,13 +133,15 @@ class Trip(object):
 
 		# Fetch the last element as long as it's a waypoint.
 		last_element = self._get_last_waypoint()
+		n_people = len(last_element.people)
 
-		# Change distance to a Quantity instance
+		# Make distance a Quantity, construct Cost instance.
 		distance = Quantity(distance, units)
+		description = 'Fuel; {}, {} people'.format(distance, n_people)
+		cost = Cost(description, self._estimate_fuel_cost(distance))
 
 		# Define the link and add it to the trip
-		ln = Link(duration,
-				  Cost('Fuel', self._estimate_fuel_cost(distance)))
+		ln = Link(duration, cost)
 		self._items.append(ln)
 
 		# Monkey-patch some properties on to the link.
@@ -189,40 +152,39 @@ class Trip(object):
 	def fuel_breakdown(self):
 		"""Itemised breakdown of fuel costs over the journey.
 
-		Returns a list of tuples containing distance and fuel cost.
-		`fuel_cost_estimate` is used if `fuel_cost` is not set.
+		Returns a list of Cost items.
 		"""
 		breakdown = []
-		for item in self._items:
+		replace = False
 
-			# Fuel only gets consumed in travel elements
+		try:
+			overall_fuel_cost = self.fuel_cost
+			replace = True
+		except AttributeError:
+			# fuel_cost undefined; simply return list of Link costs.
+			pass
+
+		for item in self._items:
+			# only Link/travel items have fuel costs
 			if not isinstance(item, Link):
 				continue
 
-			# NOTE: Fuel consumption is currently treated as a
-			# constant, so we can use the proportional distance to
-			# evaluate cost/consumption for a particular segment.
-			fraction = (item.distance / self.distance)
-			try:
-				overall_fuel_cost = self.fuel_cost
-			except AttributeError:
-				overall_fuel_cost = self.fuel_cost_estimate
+			if replace:
+				# save the estimate
+				item.fuel_cost_estimate = item.cost
+				# get ratio from Link and Trip fuel cost estimates
+				ratio = (item.fuel_cost_estimate._quantity /
+						 self.fuel_cost_estimate)
 
-			breakdown.append((item.distance,
-							  fraction * overall_fuel_cost,
-							  len(item.people))
-			)
+				item.cost = ratio * overall_fuel_cost
+
+			breakdown.append(item.cost)
 
 		return breakdown
 
 	def pretty_fuel_breakdown(self):
 		"""Human-readable fuel breakdown, returns a string."""
-		strings = []
-		for item in self.fuel_breakdown():
-			d, c, n = item
-			string = "{} | {}, {}".format(c, d, n)
-			strings.append(string)
-		return '\n'.join(strings)
+		return '\n'.join(map(str, self.fuel_breakdown()))
 
 	def assign_fuel_costs(self, real_cost=0, currency='GBP'):
 		"""Assign fuel costs to trip members proportionally.
@@ -242,14 +204,6 @@ class Trip(object):
 	# ----------------------------------------------------------------
 	# Internal methods
 	# ----------------------------------------------------------------
-	@staticmethod
-	def _assign_cost(item, name):
-		# Assign equal share of cost to all people present.
-		n = len(item.people)
-		for person in item.people:
-			person.add_cost(name + ' / {:d} people'.format(n),
-						    item.cost._quantity / n, 'GBP')
-
 	# FIXME: Put this in the vehicle/Car class
 	def _estimate_fuel_cost(self, distance):
 		# Estimate fuel cost for a distance (type: [length] quantity)

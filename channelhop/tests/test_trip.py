@@ -140,31 +140,6 @@ class TestTrip(unittest.TestCase):
 		trip.add_cost('test', 2.)
 		self.assertEqual(trip.last_wp.cost.to('GBP').magnitude, 2.)
 
-	def test__assign_cost_single_wp_single_person(self):
-		"""Distributes cost of a Trip item to its people."""
-		trip = self.trip
-
-		trip.add_wp('A')
-
-		# Circumvent the add_cost method here as it calls _assign_cost
-		trip.last_wp.cost = Cost('Parking', 5., 'GBP')
-		trip._assign_cost(trip.last_wp, 'Parking')
-
-		self.assertEqual(trip.last_wp.people.pop().balance,
-						 Quantity(5., 'GBP'))
-
-	def test__assign_cost_single_wp_two_people(self):
-		trip = self.trip
-
-		people = list(trip._people)[0], Person('B')
-		trip.add_person(people[1])
-		trip.add_wp('A')
-		trip.last_wp.cost = Cost('Parking', 5., 'GBP')
-		trip._assign_cost(trip.last_wp, 'Parking')
-
-		self.assertEqual(people[0].balance, Quantity(2.50, 'GBP'))
-		self.assertEqual(people[1].balance, Quantity(2.50, 'GBP'))
-
 	def test_add_person_mid_route(self):
 		"""Check a person is successfully added.
 

@@ -208,21 +208,3 @@ class Trip(object):
 	def _estimate_fuel_cost(self, distance):
 		# Estimate fuel cost for a distance (type: [length] quantity)
 		return self.vehicle.fuel_cost * distance
-
-	# FIXME: This needs a re-think.
-	def _get_last_waypoint(self):
-		# Check the last trip element is a waypoint; if so, return it.
-
-		try:
-			last_element = self._items[-1]
-		except IndexError:
-			raise TripDefError("No Waypoints added.")
-
-		if not isinstance(last_element, Waypoint):
-			# FIXME: Real exception.
-			raise TripDefError("Element prior to Link must be a Waypoint.")
-
-		return last_element
-
-
-

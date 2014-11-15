@@ -36,7 +36,7 @@ class TestCost(unittest.TestCase):
 	# Nothing fancy in the attributes. Add tests if they get extended.
 
 	# ----------------------------------------------------------------
-	# Test methods.
+	# Test own methods.
 	# ----------------------------------------------------------------
 	def test_assign(self):
 		"""Check the cost can be assigned to people."""
@@ -73,6 +73,20 @@ class TestCost(unittest.TestCase):
 		"""Check the programmatic representation is as expected."""
 		self.assertEqual(repr(self.sample),
 						 "<Cost('test123', 25.0, 'GBP')>")
+
+	# ----------------------------------------------------------------
+	# Test Quantity methods.
+	# ----------------------------------------------------------------
+	def test_to(self):
+		"""Test currency conversion.
+
+		This method replaces the Quantity method.
+		"""
+		expected = Quantity(1., 'GBP').to('EUR')
+		cost = Cost('test', 1., 'GBP')
+
+		self.assertEqual(cost.to('EUR').magnitude, expected.magnitude)
+		self.assertEqual(cost.to('EUR').currency, 'EUR')
 
 	# ----------------------------------------------------------------
 	# Test arithmetic operators.

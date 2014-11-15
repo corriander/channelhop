@@ -26,7 +26,10 @@ class Cost(Quantity):
 	"""
 	def __new__(cls, description, amount, currency='GBP',
 				person=None):
-		"""Arguments
+		"""Create a new cost instance.
+
+		Arguments
+		---------
 
 			description : string describing the transaction.
 			amount : either numerical value or Quantity.
@@ -36,9 +39,9 @@ class Cost(Quantity):
 
 		# Add metadata to instance and, if necessary, associate.
 		inst.description = description
+		inst.person = person
 		if person is not None:
 			inst.assign((person,))
-			inst.person = person
 		inst.currency = currency
 
 		return inst
@@ -66,6 +69,15 @@ class Cost(Quantity):
 									  '/ {} people'.format(n_people)))
 		for person in people:
 			person._bill.append(cost)
+
+	def to(self, currency):
+		"""Convert cost to a different currency."""
+		# TODO: Build in currency validation.
+		q = Quantity(self.magnitude, self.units).to(currency)
+		return self.__class__(self.description,
+							  q.magnitude,
+							  q.units,
+				   			  self.person)
 
 	def __div__(self, other):
 		if isinstance(other, (int, float, Quantity)):

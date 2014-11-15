@@ -58,14 +58,14 @@ class TestTrip(unittest.TestCase):
 		self.assertEqual(trip._people,
 						 trip._items[-1].people)
 
-	def test_link_no_wp(self):
-		"""A link/travel shouldn't be addable without a waypoint."""
+	def test_travel_no_origin(self):
+		"""No origin/waypoint & travel should raise an exception."""
 		trip = self.trip
+		self.assertRaises(TripDefError,
+						  lambda : trip.travel(50, 'km'))
 
-		self.assertRaises(TripDefError, trip.travel(50, 'km'))
-
-	def test_add_wp_and_link(self):
-		"""Adding a waypoint and a link should work.
+	def test_travel_with_origin(self):
+		"""Origin/waypoint & travel should succeed.
 
 		The waypoint and the link should both be associated with all
 		people on the trip.

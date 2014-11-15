@@ -115,11 +115,13 @@ class Trip(object):
 		Travel is represented by a Link instance.
 
 		Arguments
+		---------
 
 			distance : no. of kilometres travelled.
 			units : optional, default: 'miles'
 
 		Constraints
+		-----------
 
 		  - travel must follow a waypoint.
 		  - travel is associated with the same people as the previous
@@ -131,9 +133,12 @@ class Trip(object):
 		# TODO: intelligent (country-based) default units
 		# FIXME: Allow tolls/costs
 
-		# Fetch the last element as long as it's a waypoint.
-		last_element = self._get_last_waypoint()
-		n_people = len(last_element.people)
+		# Check the last element is a Waypoint.
+		last_wp = self.last_wp
+		if len(self._items) == 0 or last_wp is not self._items[-1]:
+			raise TripDefError("Travel must follow a waypoint.")
+
+		n_people = len(last_wp.people)
 
 		# Make distance a Quantity, construct Cost instance.
 		distance = Quantity(distance, units)
@@ -147,7 +152,7 @@ class Trip(object):
 		# Monkey-patch some properties on to the link.
 		# FIXME: Modify Link class to accept distance natively.
 		ln.distance = distance
-		ln.people = last_element.people
+		ln.people = last_wp.people
 
 	def fuel_breakdown(self):
 		"""Itemised breakdown of fuel costs over the journey.

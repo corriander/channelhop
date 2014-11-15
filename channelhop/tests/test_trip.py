@@ -85,22 +85,60 @@ class TestTrip(unittest.TestCase):
 		self.assertIs(trip._items[1].people,
 					  trip._items[0].people)
 
-	def test_last_wp_where_last_item_is_link(self):
-		"""For a waypoint + link, last_wp should return the wp."""
-		trip = self.trip
-
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-		self.assertEqual(trip.last_wp.location, 'A')
-
 	def test_add_cost(self):
-		"""Adding a cost to the last waypoint should work."""
+		"""Assigns a Cost instance to the last waypoint.
+
+		This test checks the cost is assigned to the waypoint
+		successfully.
+		"""
 		trip = self.trip
 
 		trip.add_wp('A')
-		trip.add_cost('Parking', 5., 'GBP')
+		trip.add_cost('test', 1.)
 
-		self.assertEqual(trip.last_wp.cost.to('GBP').magnitude, 5)
+		self.assertIsInstance(trip.last_wp.cost, Cost)
+		cost = trip.last_wp.cost.to('GBP')
+
+		self.assertEqual(trip.last_wp.cost.to('GBP').magnitude, 1.)
+
+	def test_add_cost_with_currency(self):
+		"""Costs can be assigned to WPs in different currencies."""
+		trip = self.trip
+
+		trip.add_wp('A')
+		trip.add_cost('test', 1., 'EUR')
+
+		self.assertEqual(trip.last_wp.cost.currency, 'EUR')
+
+#	def test_add_cost_two_people_assignment(self):
+#		"""A cost assigned to a waypoint is split between people."""
+#		trip = self.trip
+#
+#		# Add an extra person, a waypoint and a cost.
+#		trip.add_person(Person('B'))
+#		trip.add_wp('A')
+#		trip.add_cost('test', 2.)
+#
+#		# Each person should have a bill of length 1, value 0.5
+#		for person in trip.last_wp.people:
+#			self.assertEqual(len(person.bill), 1)
+#			self.assertEqual(person.balance().to('GBP').magnitude, 1.)
+
+	def test_add_cost_reassign(self):
+		"""Only a single cost can be assigned to a waypoint at a time.
+
+		Subsequent invocation of the add_cost method replaces the
+		previous cost. This test checks that happens.
+		"""
+		trip = self.trip
+		trip.add_wp('A')
+
+		# Add a cost, check it, then add another and check that the
+		# old cost is overwritten.
+		trip.add_cost('test', 1.)
+		self.assertEqual(trip.last_wp.cost.to('GBP').magnitude, 1.)
+		trip.add_cost('test', 2.)
+		self.assertEqual(trip.last_wp.cost.to('GBP').magnitude, 2.)
 
 	def test__assign_cost_single_wp_single_person(self):
 		"""Distributes cost of a Trip item to its people."""

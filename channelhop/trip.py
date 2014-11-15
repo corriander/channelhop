@@ -127,11 +127,26 @@ class Trip(object):
 		 'if they are to be associated (or removed before if not).')
 	))
 
-	def add_cost(self, *args, **kwargs):
-		"""Assign a cost to the last Waypoint added."""
-		last_element = self._get_last_waypoint()
-		last_element.cost = Cost(*args, **kwargs)
-		self._assign_cost(last_element, last_element.cost.description)
+	def add_cost(self, description, amount, currency='GBP'):
+		"""Assign a cost to the last waypoint.
+
+		Costs are represented as positive values; negative values will
+		be converted.
+
+		Arguments
+		---------
+
+			description : descriptive string
+			amount : +ve numerical value in specified currency
+			currency : 3-char string (optional, default: 'GBP')
+		"""
+		last_wp = self.last_wp
+		amount = abs(amount)
+		n_people = len(last_wp.people)
+		amount_pp = amount / n_people
+
+		# Add cost to last waypoint
+		last_wp.cost = Cost(description, amount, currency)
 
 	def travel(self, distance, units='miles', duration=None):
 		"""Travel a specified distance from the previous Waypoint.

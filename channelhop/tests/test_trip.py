@@ -33,6 +33,9 @@ class TestTrip(unittest.TestCase):
 
 		trip = self.trip
 
+		# Fuel cost is unassigned initially
+		self.assertRaises(AttributeError, lambda : trip.fuel_cost)
+
 		# Define the trip fuel cost in default currency
 		trip.fuel_cost = 100.
 		self.assertEqual(trip.fuel_cost.to('GBP'),
@@ -273,7 +276,88 @@ class TestTrip(unittest.TestCase):
 		for amount, expected in zip(actual_amounts, expected_amounts):
 			self.assertAlmostEqual(amount, expected)
 
-	def test_add_person_mid_route(self):
+	def test_assign_fuel_costs_single_person_and_link(self):
+		"""Fuel costs assigned to a single person, single Link."""
+		trip = self.trip
+
+		p = list(trip._people)[0]
+
+		# define the trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+
+		trip.assign_fuel_costs()
+
+		expected = Quantity(50, 'km') * trip.vehicle.unit_fuel_cost
+		self.assertEqual(p.balance(), expected.to('GBP'))
+
+	def test_assign_fuel_costs_single_link_and_two_people(self):
+		"""Fuel costs assigned to two people over a single Link."""
+		trip = self.trip
+
+		people = list(trip._people)[0], Person('B')
+
+		# define the trip
+		trip.add_person(people[1])
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+
+		trip.assign_fuel_costs()
+
+		expected = Quantity(25, 'km') * trip.vehicle.unit_fuel_cost
+		self.assertEqual(people[0].balance(), expected.to('GBP'))
+		self.assertEqual(people[1].balance(), expected.to('GBP'))
+
+	def test_assign_fuel_costs_single_person_two_links(self):
+		"""Fuel cost assignment for an individual, 2 part journey."""
+		trip = self.trip
+
+		p = list(trip._people)[0]
+
+		# define the trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		trip.assign_fuel_costs()
+
+		expected = Quantity(150, 'km') * trip.vehicle.unit_fuel_cost
+		self.assertEqual(p.balance(), expected.to('GBP'))
+
+	def test_assign_fuel_costs_add_person_mid_route(self):
+		"""Fuel cost assignment for additional person mid-route."""
+		trip = self.trip
+
+		people = list(trip._people)[0], Person('B')
+
+		# define the trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+
+		trip.add_person(people[1])
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		trip.assign_fuel_costs()
+
+		# Check each person has expected number of bill items.
+		self.assertEqual(len(people[0].bill), 2)
+		self.assertEqual(len(people[1].bill), 1)
+
+		# Check each balance()
+		eta = trip.vehicle.unit_fuel_cost
+		self.assertEqual(people[0].balance(),
+						 Quantity(100, 'km') * eta)
+		self.assertEqual(people[1].balance(),
+						 Quantity(50, 'km') * eta)
+
+	# ----------------------------------------------------------------
+	# Use-case tests
+	# ----------------------------------------------------------------
+	def test_assign_fuel_costs_add_person_mid_route(self):
 		"""Check a person is successfully added.
 
 		Primarily, this is to ensure the person doesn't incur costs
@@ -332,55 +416,6 @@ class TestTrip(unittest.TestCase):
 		self.assertEqual(trip._people.pop().balance,
 						 Quantity(12.50, 'GBP'))
 
-	def test_assign_fuel_costs_single_person_and_link(self):
-		"""Fuel costs assigned to a single person, single Link."""
-		trip = self.trip
-
-		p = list(trip._people)[0]
-
-		# define the trip
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-
-		trip.assign_fuel_costs()
-
-		expected = Quantity(50, 'km') * trip.vehicle.fuel_cost
-		self.assertEqual(p.balance, expected)
-
-	def test_assign_fuel_costs_single_link_and_two_people(self):
-		"""Fuel costs assigned to two people over a single Link."""
-		trip = self.trip
-
-		people = list(trip._people)[0], Person('B')
-
-		# define the trip
-		trip.add_person(people[1])
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-
-		trip.assign_fuel_costs()
-
-		expected = Quantity(25, 'km') * trip.vehicle.fuel_cost
-		self.assertEqual(people[0].balance, expected)
-		self.assertEqual(people[1].balance, expected)
-
-	def test_assign_fuel_costs_single_person_two_links(self):
-		"""Fuel cost assignment for an individual, 2 part journey."""
-		trip = self.trip
-
-		p = list(trip._people)[0]
-
-		# define the trip
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-		trip.add_wp('B')
-		trip.travel(100, 'km')
-		trip.add_wp('C')
-
-		trip.assign_fuel_costs()
-
-		expected = Quantity(150, 'km') * trip.vehicle.fuel_cost
-		self.assertEqual(p.balance, expected)
 
 	def test_calculate_fuel_costs_no_arg(self):
 		"""Fuel costs assigned to people based on estimates."""

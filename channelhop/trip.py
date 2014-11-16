@@ -28,6 +28,7 @@ class Trip(object):
 		self.vehicle = vehicle
 		self._items = []
 		self._people = set()
+		self._travel_components = []
 
 	# ----------------------------------------------------------------
 	# Properties
@@ -42,9 +43,8 @@ class Trip(object):
 	@property
 	def fuel_cost_estimate(self):
 		"""Estimated overall fuel cost."""
-		return sum(item.cost
-				   for item in self._items
-				   if isinstance(item, Link))
+		return sum(component.cost
+				   for component in self._travel_components)
 
 	@property
 	def fuel_cost(self):
@@ -114,7 +114,7 @@ class Trip(object):
 		# Add cost to last waypoint
 		last_wp.cost = Cost(description, amount, currency)
 
-	def travel(self, distance, units='miles', duration=None):
+	def travel(self, distance, units='miles'):
 		"""Travel a specified distance from the previous Waypoint.
 
 		Travel is represented by a Link instance.
@@ -148,8 +148,9 @@ class Trip(object):
 		cost = self.vehicle.estimate_fuel_cost(distance).to('GBP')
 
 		# Define the link and add it to the trip
-		ln = Link(duration, cost)
+		ln = Link(duration=None, cost=cost)
 		self._items.append(ln)
+		self._travel_components.append(ln)
 
 		# Monkey-patch some properties on to the link.
 		# FIXME: Modify Link class to accept distance natively.
@@ -174,20 +175,16 @@ class Trip(object):
 		"""Human-readable fuel breakdown, returns a string."""
 		return '\n'.join(map(str, self.fuel_breakdown()))
 
-	def assign_fuel_costs(self, real_cost=0, currency='GBP'):
-		"""Assign fuel costs to trip members proportionally.
+	def assign_fuel_costs(self, currency='GBP'):
+		"""Assign fuel costs to trip participants.
 
-		If a real cost is provided, the *proportions* of the estimated
-		fuel costs are used, i.e. if you know you spent 45 on fuel,
-		and the estimate is in fact 35, the 45 is split up based on
-		the estimates for each bit of the journey.
+		This method adds equally divided, proportionally determined
+		fuel costs for each trip component to the relevant
+		participants via the `fuel_breakdown` method.
 		"""
-		if real_cost > 0:
-			fuel_cost = self.fuel_cost = Quantity(real_cost, currency)
-
-		for item in self._items:
-			if isinstance(item, Link):
-				self._assign_cost(item, 'Fuel')
+		for cost, component in zip(self.fuel_breakdown(),
+								   self._travel_components):
+			cost.split_assign(component.people)
 
 	# ----------------------------------------------------------------
 	# Internal methods

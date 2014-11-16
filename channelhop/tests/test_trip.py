@@ -192,6 +192,33 @@ class TestTrip(unittest.TestCase):
 		trip.add_cost('test', 2.)
 		self.assertEqual(trip.last_wp.cost.to('GBP').magnitude, 2.)
 
+	def test_add_second_person(self):
+		"""Additional people shouldn't be associated with all WPs."""
+		trip = self.trip
+
+		person = Person('B')
+
+		trip.add_wp('A')
+		trip.add_person(person)
+		self.assertNotIn(person, trip.last_wp.people)
+
+		trip.add_wp('B')
+		self.assertIn(person, trip.last_wp.people)
+
+	def test_rm_second_person(self):
+		"""Removed people shouldn't be associated with all WPs."""
+		trip = self.trip
+
+		person = Person('B')
+
+		trip.add_person(person)
+		trip.add_wp('A')
+		self.assertIn(person, trip.last_wp.people)
+
+		trip.rm_person(person)
+		trip.add_wp('B')
+		self.assertNotIn(person, trip.last_wp.people)
+
 	def test_add_person_mid_route(self):
 		"""Check a person is successfully added.
 

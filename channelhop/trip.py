@@ -70,7 +70,7 @@ class Trip(object):
 		"""Add a person to the trip."""
 		self._people.add(person)
 
-	def remove_person(self, person):
+	def rm_person(self, person):
 		"""Remove a person from the trip."""
 		self._people.remove(person)
 

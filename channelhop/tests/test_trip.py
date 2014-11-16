@@ -90,21 +90,25 @@ class TestTrip(unittest.TestCase):
 	# ----------------------------------------------------------------
 	# Check methods
 	# ----------------------------------------------------------------
-	def test_add_wp_no_people(self):
-		"""Adding a waypoint before adding people shouldn't work."""
-		trip = Trip('test', Car(1,1))
-		self.assertRaises(TripDefError, trip.add_wp('A'))
-
 	def test_add_wp(self):
-		"""Adding a waypoint with at least one person should work.
-
-		The waypoint should be associated with all people on the trip.
-		"""
+		"""Waypoint are addable with at least one person."""
 		trip = self.trip
 
 		trip.add_wp('A')
-		self.assertEqual(trip._people,
-						 trip._items[-1].people)
+		self.assertEqual(trip._people, trip._items[-1].people)
+
+	def test_add_wp_multiple_people(self):
+		"""The waypoint is associated with all people on the trip."""
+		trip = self.trip
+
+		trip.add_person(Person('B'))
+		trip.add_wp('A')
+		self.assertEqual(trip._people, trip._items[-1].people)
+
+	def test_add_wp_no_people(self):
+		"""Adding a waypoint before adding people isn't possible."""
+		trip = Trip('test', Car(1,1))
+		self.assertRaises(TripDefError, lambda : trip.add_wp('A'))
 
 	def test_travel_no_origin(self):
 		"""No origin/waypoint & travel should raise an exception."""

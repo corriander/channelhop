@@ -74,19 +74,24 @@ class Trip(object):
 		"""Remove a person from the trip."""
 		self._people.remove(person)
 
-	def add_wp(self, *args, **kwargs):
-		wp = Waypoint(*args, **kwargs)
+	def add_wp(self, location):
+		"""Add a waypoint to the trip.
+
+		A waypoint is associated with the people currently present on
+		the trip. People must be added before adding a waypoint if
+		they are to be associated (or removed if not).
+
+		Arguments
+		---------
+
+			location : string (e.g. 'London' or '38 Some Place')
+		"""
+		if not self._people:
+			raise TripDefError("People must be present on the trip.")
+
+		wp = Waypoint(location)
 		wp.people = set(self._people)
 		self._items.append(wp)
-
-	# Define the docstring
-	add_wp.__doc__ = '\n'.join((
-		'Add a waypoint to the trip.\n',
-		Waypoint.__doc__,
-		('A Waypoint is associated with the people currently present '
-		 'on the trip. People must be added before adding a Waypoint '
-		 'if they are to be associated (or removed before if not).')
-	))
 
 	def add_cost(self, description, amount, currency='GBP'):
 		"""Assign a cost to the last waypoint.

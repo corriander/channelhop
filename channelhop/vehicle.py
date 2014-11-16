@@ -1,7 +1,7 @@
 """Module for vehicle representation."""
 # TODO: Class (and supporting) for Car, providing fuel efficiency,
 # etc.
-import money	# make sure it's loaded first.
+from money import Cost
 from quantities import units, Quantity
 
 # Define mpg
@@ -69,7 +69,7 @@ class Car(object):
 		return 1 / self.fuel_consumption
 
 	@property
-	def fuel_cost(self):
+	def unit_fuel_cost(self):
 		"""Cost per unit distance."""
 		return FUELPRICE / self.unit_range
 
@@ -78,7 +78,21 @@ class Car(object):
 		"""Alias for unit_range in miles per gallon."""
 		return self.unit_range.to('mpg')
 
+	def estimate_fuel_cost(self, distance, units='miles'):
+		"""Estimate fuel cost for a distance.
 
+		Arguments
+		---------
 
+			distance : numerical value or Quantity instance
+			units : string (optional, default: 'miles')
 
+		If the distance is a Quantity instance, the units argument is
+		ignored.
+		"""
+		if not isinstance(distance, Quantity):
+			distance = Quantity(magnitude, units)
 
+		desc = "Fuel ({})".format(distance)
+		quantity = (self.unit_fuel_cost * distance)
+		return Cost(desc, quantity.magnitude, quantity.units)

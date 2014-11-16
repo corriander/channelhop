@@ -1,5 +1,6 @@
 import unittest
 
+from channelhop.money import Cost
 import channelhop.vehicle as vehicle
 from channelhop.vehicle import Car, FuelTank
 from channelhop.quantities import units, Quantity
@@ -36,10 +37,6 @@ class TestCar(unittest.TestCase):
 		self.assertEqual(0.1,
 						 self.car.fuel_consumption.to('L/km').magnitude)
 
-	def test_fuel_cost(self):
-		"""Fuel cost is the cost per unit distance."""
-		self.assertEqual(10, self.car.fuel_cost.to('p/km').magnitude)
-
 	def test_mpg(self):
 		"""mpg is a common representation of fuel efficiency."""
 		self.assertAlmostEqual(23.52, self.car.mpg.magnitude,
@@ -53,9 +50,26 @@ class TestCar(unittest.TestCase):
 		"""
 		self.assertEqual(650, self.car.range.to('km').magnitude)
 
+	def test_unit_fuel_cost(self):
+		"""Fuel cost is the cost per unit distance."""
+		self.assertEqual(10,
+						 self.car.unit_fuel_cost.to('p/km').magnitude)
+
 	def test_unit_range(self):
 		"""The unit range is the distance per unit cost."""
 		self.assertEqual(10, self.car.unit_range.to('km/L').magnitude)
+
+	# ----------------------------------------------------------------
+	# Methods
+	# ----------------------------------------------------------------
+	def test_estimate_fuel_cost(self):
+		"""A fuel cost estimate returns a Cost object."""
+		cost = self.car.estimate_fuel_cost(2., 'miles')
+
+		self.assertIsInstance(cost, Cost)
+		self.assertAlmostEqual(cost.magnitude,
+						 	   2 * self.car.unit_fuel_cost.magnitude,
+							   places=1)
 
 
 if __name__ == '__main__':

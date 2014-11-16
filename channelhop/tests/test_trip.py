@@ -60,7 +60,7 @@ class TestTrip(unittest.TestCase):
 
 		# Expected fuel cost
 		expected = (Quantity(150, 'km') *
-					trip.vehicle.fuel_cost.to('GBP/km'))
+					trip.vehicle.unit_fuel_cost.to('GBP/km'))
 
 		self.assertEqual(trip.fuel_cost_estimate.to('GBP'), expected)
 

@@ -143,12 +143,9 @@ class Trip(object):
 		if len(self._items) == 0 or last_wp is not self._items[-1]:
 			raise TripDefError("Travel must follow a waypoint.")
 
-		n_people = len(last_wp.people)
-
 		# Make distance a Quantity, construct Cost instance.
 		distance = Quantity(distance, units)
-		description = 'Fuel; {}, {} people'.format(distance, n_people)
-		cost = Cost(description, self._estimate_fuel_cost(distance))
+		cost = self.vehicle.estimate_fuel_cost(distance).to('GBP')
 
 		# Define the link and add it to the trip
 		ln = Link(duration, cost)

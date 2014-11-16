@@ -219,6 +219,60 @@ class TestTrip(unittest.TestCase):
 		trip.add_wp('B')
 		self.assertNotIn(person, trip.last_wp.people)
 
+	def test_fuel_breakdown_estimated(self):
+		"""Returns list of Cost instances based on estimated fuel."""
+		trip = self.trip
+
+		# define trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		# Expected
+		eta = trip.vehicle.unit_fuel_cost.to('GBP/km')
+		expected_amounts = [
+				(eta * Quantity(50, 'km')).magnitude,
+				(eta * Quantity(100, 'km')).magnitude
+		]
+		actual_amounts = [
+				c.magnitude for c in trip.fuel_breakdown()
+		]
+		pairs = zip((c.magnitude for c in trip.fuel_breakdown()),
+					expected_amounts)
+
+		for amount, expected in pairs:
+			self.assertAlmostEqual(amount, expected, places=2)
+
+	def test_fuel_breakdown_actual(self):
+		"""Returns a list of Cost instances based on actual fuel cost.
+
+		The test takes the magnitude of the Cost instances and
+		compares them against expected magnitudes, based on a constant
+		fuel consumption.
+
+		This type of calculation is performed if the trip.fuel_cost is
+		set.
+		"""
+		trip = self.trip
+
+		# define trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		# Explicitly set actual fuel cost in GBP
+		trip.fuel_cost = Quantity(45, 'GBP')
+
+		expected_amounts = (15., 30.)
+		actual_amounts = (c.magnitude for c in trip.fuel_breakdown())
+
+		for amount, expected in zip(actual_amounts, expected_amounts):
+			self.assertAlmostEqual(amount, expected)
+
 	def test_add_person_mid_route(self):
 		"""Check a person is successfully added.
 
@@ -327,48 +381,6 @@ class TestTrip(unittest.TestCase):
 
 		expected = Quantity(150, 'km') * trip.vehicle.fuel_cost
 		self.assertEqual(p.balance, expected)
-
-	def test_fuel_breakdown_estimated(self):
-		"""Returns a list of tuples containing fuel info.
-
-		Where a fuel cost hasn't been assigned, estimates are used.
-		"""
-
-		trip = self.trip
-
-		# define trip
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-		trip.add_wp('B')
-		trip.travel(100, 'km')
-		trip.add_wp('C')
-
-		# Expected
-		eta_cost = trip.vehicle.fuel_cost.to('GBP/km')
-		eta_fuel = trip.vehicle.fuel_consumption.to('L/km')
-		expected = [(q, q * eta_cost)
-					for q in (Quantity(50, 'km'), Quantity(100, 'km'))]
-
-		self.assertItemsEqual(trip.fuel_breakdown(), expected)
-
-	def test_fuel_breakdown_actual(self):
-		"""Returns a list of tuples containing fuel info."""
-
-		trip = self.trip
-
-		# define trip
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-		trip.add_wp('B')
-		trip.travel(100, 'km')
-		trip.add_wp('C')
-		trip.fuel_cost = Quantity(45, 'GBP')
-
-		# Expected
-		expected = [(Quantity(50, 'km'), Quantity(15., 'GBP')),
-					(Quantity(100, 'km'), Quantity(30., 'GBP'))]
-
-		self.assertItemsEqual(trip.fuel_breakdown(), expected)
 
 	def test_calculate_fuel_costs_no_arg(self):
 		"""Fuel costs assigned to people based on estimates."""

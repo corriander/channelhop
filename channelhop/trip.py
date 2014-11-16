@@ -42,7 +42,7 @@ class Trip(object):
 	@property
 	def fuel_cost_estimate(self):
 		"""Estimated overall fuel cost."""
-		return sum(item.cost._quantity
+		return sum(item.cost
 				   for item in self._items
 				   if isinstance(item, Link))
 
@@ -159,35 +159,16 @@ class Trip(object):
 	def fuel_breakdown(self):
 		"""Itemised breakdown of fuel costs over the journey.
 
-		Returns a list of Cost items.
+		Returns a list of Cost items. If the trip.fuel_cost is set,
+		this value is used to calculated (constant) proportional costs
+		for each travel component. Otherwise, the estimated costs for
+		each travel component are returned
 		"""
-		breakdown = []
-		replace = False
-
-		try:
-			overall_fuel_cost = self.fuel_cost
-			replace = True
-		except AttributeError:
-			# fuel_cost undefined; simply return list of Link costs.
-			pass
-
-		for item in self._items:
-			# only Link/travel items have fuel costs
-			if not isinstance(item, Link):
-				continue
-
-			if replace:
-				# save the estimate
-				item.fuel_cost_estimate = item.cost
-				# get ratio from Link and Trip fuel cost estimates
-				ratio = (item.fuel_cost_estimate._quantity /
-						 self.fuel_cost_estimate)
-
-				item.cost = ratio * overall_fuel_cost
-
-			breakdown.append(item.cost)
-
-		return breakdown
+		# TODO: Indicate type of result somehow (maybe in cost desc.)
+		if hasattr(self, '_fuel_cost'):
+			return self._fuel_breakdown_actual()
+		else:
+			return self._fuel_breakdown_estimate()
 
 	def pretty_fuel_breakdown(self):
 		"""Human-readable fuel breakdown, returns a string."""
@@ -211,7 +192,25 @@ class Trip(object):
 	# ----------------------------------------------------------------
 	# Internal methods
 	# ----------------------------------------------------------------
-	# FIXME: Put this in the vehicle/Car class
-	def _estimate_fuel_cost(self, distance):
-		# Estimate fuel cost for a distance (type: [length] quantity)
-		return self.vehicle.fuel_cost * distance
+	def _fuel_breakdown_estimate(self):
+		# Return list of Cost objects derived from estimated fuel cost
+		return [obj.cost
+				for obj in self._items
+				if isinstance(obj, Link)]
+
+	def _fuel_breakdown_actual(self):
+		# Return list of Cost objects derived from actual fuel cost
+		# KISS: it's arguably better not to assume constant fuel
+		# consumption but it's a rather pervasive assumption here.
+		# Take a constant ratio and apply it to the breakdown estimate
+		#
+		#	C_i = C_i,est / (C_est / C)
+		#
+		# where
+		#
+		#	C_i is fuel cost of journey component
+		#	(C_est / C) is ratio of estimate to actual fuel costs
+		ratio = self.fuel_cost_estimate / self.fuel_cost
+
+		return [cost / ratio
+				for cost in self._fuel_breakdown_estimate()]

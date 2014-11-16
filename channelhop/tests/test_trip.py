@@ -14,8 +14,56 @@ class TestTrip(unittest.TestCase):
 		self.trip.add_person(Person('A'))
 
 	# ----------------------------------------------------------------
-	# Check attributes
+	# Check attributes/properties
 	# ----------------------------------------------------------------
+	def test_distance(self):
+		"""Overall trip distance."""
+		trip = self.trip
+
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		self.assertEqual(trip.distance.to('km'), Quantity(150, 'km'))
+
+	def test_fuel_cost(self):
+		"""Should return the actual fuel cost assigned manually."""
+
+		trip = self.trip
+
+		# Define the trip fuel cost in default currency
+		trip.fuel_cost = 100.
+		self.assertEqual(trip.fuel_cost.to('GBP'),
+						 Quantity(100, 'GBP'))
+
+		# Define a fuel cost in a different currency
+		trip.fuel_cost = Quantity(125, 'EUR')
+		self.assertEqual(trip.fuel_cost.to('EUR'),
+						 Quantity(125, 'EUR'))
+
+	def test_fuel_cost_estimate(self):
+		"""Calculates the overall estimated fuel cost.
+
+		This doesn't rely on people, i.e. it doesn't actually assign
+		costs.
+		"""
+		trip = self.trip
+
+		# Define the trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		# Expected fuel cost
+		expected = (Quantity(150, 'km') *
+					trip.vehicle.fuel_cost.to('GBP/km'))
+
+		self.assertEqual(trip.fuel_cost_estimate.to('GBP'), expected)
+
 	def test_last_wp_single_waypoint(self):
 		"""Check the last_wp attribute returns the only waypoint."""
 		trip = self.trip
@@ -248,55 +296,6 @@ class TestTrip(unittest.TestCase):
 
 		expected = Quantity(150, 'km') * trip.vehicle.fuel_cost
 		self.assertEqual(p.balance, expected)
-
-	def test_fuel_cost_estimate(self):
-		"""Calculates the overall estimated fuel cost.
-
-		This doesn't rely on people, i.e. it doesn't actually assign
-		costs.
-		"""
-		trip = self.trip
-
-		# Define the trip
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-		trip.add_wp('B')
-		trip.travel(100, 'km')
-		trip.add_wp('C')
-
-		# Expected fuel cost
-		expected = (Quantity(150, 'km') *
-					trip.vehicle.fuel_cost.to('GBP/km'))
-
-		self.assertEqual(trip.fuel_cost_estimate.to('GBP'), expected)
-
-	def test_fuel_cost(self):
-		"""Should return the actual fuel cost assigned manually."""
-
-		trip = self.trip
-
-		# Define the trip fuel cost in default currency
-		trip.fuel_cost = 100.
-		self.assertEqual(trip.fuel_cost.to('GBP'),
-						 Quantity(100, 'GBP'))
-
-		# Define a fuel cost in a different currency
-		trip.fuel_cost = Quantity(125, 'EUR')
-		self.assertEqual(trip.fuel_cost.to('EUR'),
-						 Quantity(125, 'EUR'))
-
-	def test_distance(self):
-		"""Overall trip distance."""
-		trip = self.trip
-
-		# define
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-		trip.add_wp('B')
-		trip.travel(100, 'km')
-		trip.add_wp('C')
-
-		self.assertEqual(trip.distance.to('km'), Quantity(150, 'km'))
 
 	def test_fuel_breakdown_estimated(self):
 		"""Returns a list of tuples containing fuel info.

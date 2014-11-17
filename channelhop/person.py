@@ -20,13 +20,10 @@ class Person(object):
 		"""List of Cost instances."""
 		return self._bill
 
-	def pretty_bill(self):
-		"""Human-readable, itemised bill.
-
-		Returns a string.
-		"""
+	def prettify_bill(self):
+		"""Return a human-readable, itemised bill as a string."""
 		strings = [self.name] + map(str, self._bill)
-		strings.append('	BALANCE: {}'.format(self.balance))
+		strings.append('	BALANCE: {}'.format(self.balance()))
 		return '\n'.join(strings)
 
 	def add_expense(self, description, amount, currency='GBP'):

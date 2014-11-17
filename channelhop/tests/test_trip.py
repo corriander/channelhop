@@ -30,21 +30,21 @@ class TestTrip(unittest.TestCase):
 
 	def test_fuel_cost(self):
 		"""Should return the actual fuel cost assigned manually."""
-
 		trip = self.trip
 
 		# Fuel cost is unassigned initially
 		self.assertRaises(AttributeError, lambda : trip.fuel_cost)
 
-		# Define the trip fuel cost in default currency
-		trip.fuel_cost = 100.
-		self.assertEqual(trip.fuel_cost.to('GBP'),
-						 Quantity(100, 'GBP'))
+		# REMOVEME
+		## Define the trip fuel cost in default currency
+		#trip._fuel_cost = 100.
+		#self.assertEqual(trip.fuel_cost.to('GBP'),
+		#				 Quantity(100, 'GBP'))
 
-		# Define a fuel cost in a different currency
-		trip.fuel_cost = Quantity(125, 'EUR')
-		self.assertEqual(trip.fuel_cost.to('EUR'),
-						 Quantity(125, 'EUR'))
+		## Define a fuel cost in a different currency
+		#trip._fuel_cost = Quantity(125, 'EUR')
+		#self.assertEqual(trip.fuel_cost.to('EUR'),
+		#				 Quantity(125, 'EUR'))
 
 	def test_fuel_cost_estimate(self):
 		"""Calculates the overall estimated fuel cost.
@@ -165,19 +165,6 @@ class TestTrip(unittest.TestCase):
 
 		self.assertEqual(trip.last_wp.cost.currency, 'EUR')
 
-#	def test_add_cost_two_people_assignment(self):
-#		"""A cost assigned to a waypoint is split between people."""
-#		trip = self.trip
-#
-#		# Add an extra person, a waypoint and a cost.
-#		trip.add_person(Person('B'))
-#		trip.add_wp('A')
-#		trip.add_cost('test', 2.)
-#
-#		# Each person should have a bill of length 1, value 0.5
-#		for person in trip.last_wp.people:
-#			self.assertEqual(len(person.bill), 1)
-#			self.assertEqual(person.balance().to('GBP').magnitude, 1.)
 
 	def test_add_cost_reassign(self):
 		"""Only a single cost can be assigned to a waypoint at a time.
@@ -268,10 +255,50 @@ class TestTrip(unittest.TestCase):
 		trip.add_wp('C')
 
 		# Explicitly set actual fuel cost in GBP
-		trip.fuel_cost = Quantity(45, 'GBP')
+		trip._fuel_cost = Quantity(45, 'GBP')
+
+		actual_amounts = []
+		for cost in trip.fuel_breakdown():
+			self.assertIsInstance(cost, Cost)
+			actual_amounts.append(cost.magnitude)
 
 		expected_amounts = (15., 30.)
-		actual_amounts = (c.magnitude for c in trip.fuel_breakdown())
+
+		for amount, expected in zip(actual_amounts, expected_amounts):
+			self.assertAlmostEqual(amount, expected)
+
+	def test_fuel_breakdown_actual_lower_than_estimate(self):
+		"""Returns a list of Cost instances based on actual fuel cost.
+
+		The test takes the magnitude of the Cost instances and
+		compares them against expected magnitudes, based on a constant
+		fuel consumption.
+
+		This type of calculation is performed if the trip.fuel_cost is
+		set.
+
+		NOTE: This test is here because of a pecularity in Pint's
+		handling of dimensionless ratios (or maybe, handling of this
+		in Cost).
+		"""
+		trip = self.trip
+
+		# define trip
+		trip.add_wp('A')
+		trip.travel(50, 'km')
+		trip.add_wp('B')
+		trip.travel(100, 'km')
+		trip.add_wp('C')
+
+		# Explicitly set actual fuel cost in GBP
+		trip._fuel_cost = Quantity(6, 'GBP')
+
+		actual_amounts = []
+		for cost in trip.fuel_breakdown():
+			self.assertIsInstance(cost, Cost)
+			actual_amounts.append(cost.magnitude)
+
+		expected_amounts = (2., 4.)
 
 		for amount, expected in zip(actual_amounts, expected_amounts):
 			self.assertAlmostEqual(amount, expected)
@@ -355,131 +382,115 @@ class TestTrip(unittest.TestCase):
 						 Quantity(50, 'km') * eta)
 
 	# ----------------------------------------------------------------
-	# Use-case tests
+	# Use-case tests - These are not really unit tests!
 	# ----------------------------------------------------------------
-	def test_assign_fuel_costs_add_person_mid_route(self):
-		"""Check a person is successfully added.
+	def test_trip_A(self):
+		"""Trip with 2 waypoints and a new passenger at second.
 
-		Primarily, this is to ensure the person doesn't incur costs
-		from trip elements prior to their joining.
+			- Depart with a parking cost
+			- Arrive, park and pick up new passenger (responsible for
+			  parking share)
 		"""
 		trip = self.trip
 
-		pA = list(trip._people)[0]
+		people = list(trip._people)[0], Person('B')
 		trip.add_wp('A')
 		trip.add_cost('ParkingA', 5)
 		trip.travel(50, 'km')
-		p = Person('B')
-		trip.add_person(p)
+
+		trip.add_person(people[1])
 		trip.add_wp('B')
 		trip.add_cost('ParkingB', 10)
 
 		# Sanity checks to make sure they are actually present for the
 		# right parts of the trip.
-		self.assertNotIn(p, trip._items[0].people)
-		self.assertNotIn(p, trip._items[1].people)
-		self.assertIn(p, trip._items[2].people)
+		self.assertNotIn(people[1], trip._items[0].people)
+		self.assertNotIn(people[1], trip._items[1].people)
+		self.assertIn(people[1], trip._items[2].people)
 
 		# Persons A and B should both have costs associated with them
 		# here. As B has been removed before the second waypoint, the
 		# system assumes they don't incur this cost.
-		self.assertEqual(p.balance, Quantity(5.0, 'GBP'))
-		self.assertEqual(pA.balance, Quantity(10.0, 'GBP'))
+		self.assertEqual(people[0].balance(), Quantity(10.0, 'GBP'))
+		self.assertEqual(people[1].balance(), Quantity(5.0, 'GBP'))
 
-	def test_remove_person_mid_route(self):
-		"""Check a person is successfully removed.
-
-		Primarily, this is to ensure the person doesn't incur costs
-		from the elements following their removal.
-		"""
-		trip = self.trip
-
-		p = Person('B')
-		trip.add_person(p)
-		trip.add_wp('A')
-		trip.add_cost('ParkingA', 5)
-		trip.travel(50, 'km')
-		trip.remove_person(p)
-		trip.add_wp('B')
-		trip.add_cost('ParkingB', 10)
-
-		# Sanity checks to make sure they are actually present for the
-		# right parts of the trip.
-		self.assertIn(p, trip._items[0].people)
-		self.assertIn(p, trip._items[1].people)
-		self.assertNotIn(p, trip._items[2].people)
-
-		# Persons A and B should both have costs associated with them
-		# here. As B has been removed before the second waypoint, the
-		# system assumes they don't incur this cost.
-		self.assertEqual(p.balance, Quantity(2.50, 'GBP'))
-		self.assertEqual(trip._people.pop().balance,
-						 Quantity(12.50, 'GBP'))
-
-
-	def test_calculate_fuel_costs_no_arg(self):
-		"""Fuel costs assigned to people based on estimates."""
-		trip = self.trip
-
-		pA = list(trip._people)[0]
-		# Define the trip
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-		pB = Person('B')
-		trip.add_person(pB)
-		trip.add_wp('B')
-		trip.travel(100, 'km')
-		trip.add_wp('C')
-
-		# Calculate fuel costs.
+		# Calculate fuel shares and re-check the balance.
 		trip.assign_fuel_costs()
+		fuel_cost = (Quantity(50, 'km') * trip.vehicle.unit_fuel_cost)
+		self.assertEqual(people[0].balance(),
+						 Quantity(10.0, 'GBP') + fuel_cost)
+		self.assertEqual(people[1].balance(), Quantity(5.0, 'GBP'))
 
-		# Expected costs per person.
-		eta = trip.vehicle.fuel_cost.to('GBP/km')
-		expected_A = Quantity(100, 'km') * eta
-		expected_B = Quantity(50, 'km') * eta
+	def test_trip_B(self):
+		"""Trip with 4 waypoints, multiple currencies and varying ppl.
 
-		# Person A should have 2 cost estimates, Person B 1.
-		self.assertAlmostEqual(pA.balance.magnitude,
-							   expected_A.magnitude,
-							   places=2)
-		self.assertAlmostEqual(pB.balance.magnitude,
-							   expected_B.magnitude,
-							   places=2)
+			- Depart with two people
+			- Park at second waypoint, pick up third person, drop off
+			  second.
+			- Cross border (distance units and currency change)
+			- Drive to destination.
 
-	def test_calculate_fuel_costs_with_override(self):
-		"""Fuel costs assigned to people based on a real cost.
-
-		The estimates here are used to evaluate the proportional cost
-		of each travel component.
+		In this case, the real fuel cost differs from the estimate due
+		to bad traffic.
 		"""
 		trip = self.trip
+		people = list(trip._people)[0], Person('B'), Person('C')
 
-		pA = list(trip._people)[0]
-		# Define the trip
-		trip.add_wp('A')
-		trip.travel(50, 'km')
-		pB = Person('B')
-		trip.add_person(pB)
+		# These will be used in input and validation.
+		a2b, b2c, c2d = (100, 'miles'), (10, 'miles'), (234, 'km')
+		fuel_payment = (30, 'GBP')
+
+		trip.add_person(people[1])	# 'B' is also departing
+		trip.add_wp('A')			# origin
+		trip.travel(*a2b)	# to pick up 'C' and drop off 'B'
+		trip.add_person(people[2])	# 'C' joins
+		trip.rm_person(people[1])	# 'B' leaves
 		trip.add_wp('B')
-		trip.travel(100, 'km')
+		trip.add_cost('ParkingB', 2.5, 'GBP')	# Park to get 'B'
+		trip.travel(*b2c)						# Travel to border
 		trip.add_wp('C')
+		trip.travel(*c2d)						# Travel from border
+		trip.add_wp('D')
+		trip.add_cost('ParkingD', 12., 'EUR')	# Park at destination
 
-		# Calculate fuel costs.
-		trip.assign_fuel_costs(100, currency='GBP')
+		trip.assign_fuel_costs(*fuel_payment)	# Calculate bills
 
-		# Expected costs per person.
-		# Here person A should be paying 2/3 of the costs based on the
-		# mileage breakdown. Person B, 1/3 of the costs.
-		expected_A = 2./3. * 100 * units.GBP
-		expected_B = 1./3. * 100 * units.GBP
+		# Check everyone is present at the right points
+		self.assertItemsEqual(trip._items[0].people, people[:2])
+		self.assertItemsEqual(trip._items[1].people, people[:2])
+		self.assertItemsEqual(trip._items[2].people,
+							  (people[0], people[2]))
+		self.assertItemsEqual(trip._items[3].people,
+							  (people[0], people[2]))
+		self.assertItemsEqual(trip._items[4].people,
+							  (people[0], people[2]))
 
-		# Person A should have 2 cost estimates, Person B 1.
-		self.assertAlmostEqual(pA.balance.magnitude,
-							   expected_A.magnitude,
+		# Check each person has the expected number of bill elements
+		self.assertEqual(len(people[0].bill), 5)
+		self.assertEqual(len(people[1].bill), 1)
+		self.assertEqual(len(people[2].bill), 4)
+
+		# Person A incurs half of all the fuel costs and parking costs
+		fuel_cost = 15. # GBP
+		parking = 1.25 + (6. * Quantity(1, 'EUR').to('GBP').magnitude)
+		total = fuel_cost + parking # GBP
+		self.assertAlmostEqual(people[0].balance().magnitude,
+							   total,
 							   places=2)
-		self.assertAlmostEqual(pB.balance.magnitude,
-							   expected_B.magnitude,
+
+		# Persons B and C cover the other half.
+		self.assertAlmostEqual((people[1].balance().magnitude +
+								people[2].balance().magnitude),
+								total,
+								places=2)
+
+		# Person B only incurs half of the fuel cost for the initial
+		# 100 mile drive (which, by virtue of the above, means C is
+		# correct).
+		ratio = Quantity(50, 'miles') / trip.distance.to('miles')
+		fuel_cost = 30. * ratio	# GBP
+		self.assertAlmostEqual(people[1].balance().magnitude,
+							   fuel_cost,
 							   places=2)
 
 

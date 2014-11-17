@@ -43,18 +43,16 @@ class Trip(object):
 	@property
 	def fuel_cost_estimate(self):
 		"""Estimated overall fuel cost."""
-		return sum(component.cost
-				   for component in self._travel_components)
+		total = sum(component.cost
+				    for component in self._travel_components)
+
+		return Cost('Total fuel cost (estimated)', total.magnitude,
+					'GBP')
 
 	@property
 	def fuel_cost(self):
 		"""Actual fuel cost."""
 		return self._fuel_cost
-	@fuel_cost.setter
-	def fuel_cost(self, value):
-		if not isinstance(value, Quantity):
-			value = Quantity(value, 'GBP')
-		self._fuel_cost = value
 
 	@property
 	def last_wp(self):
@@ -107,12 +105,12 @@ class Trip(object):
 			currency : 3-char string (optional, default: 'GBP')
 		"""
 		last_wp = self.last_wp
-		amount = abs(amount)
-		n_people = len(last_wp.people)
-		amount_pp = amount / n_people
 
 		# Add cost to last waypoint
 		last_wp.cost = Cost(description, amount, currency)
+
+		# Assign cost to people
+		last_wp.cost.split_assign(last_wp.people)
 
 	def travel(self, distance, units='miles'):
 		"""Travel a specified distance from the previous Waypoint.
@@ -175,13 +173,25 @@ class Trip(object):
 		"""Human-readable fuel breakdown, returns a string."""
 		return '\n'.join(map(str, self.fuel_breakdown()))
 
-	def assign_fuel_costs(self, currency='GBP'):
+	def assign_fuel_costs(self, real_amount=0, currency='GBP'):
 		"""Assign fuel costs to trip participants.
 
 		This method adds equally divided, proportionally determined
 		fuel costs for each trip component to the relevant
 		participants via the `fuel_breakdown` method.
+
+		Arguments
+		---------
+
+			real_amount : numeric value representing actual fuel value
+						  consumed.
+			currency : units of the real_amount
 		"""
+		if real_amount > 0:
+			self._fuel_cost = Cost('Total fuel cost',
+								   real_amount,
+								   currency)
+
 		for cost, component in zip(self.fuel_breakdown(),
 								   self._travel_components):
 			cost.split_assign(component.people)
@@ -200,14 +210,19 @@ class Trip(object):
 		# KISS: it's arguably better not to assume constant fuel
 		# consumption but it's a rather pervasive assumption here.
 		# Take a constant ratio and apply it to the breakdown estimate
-		#
-		#	C_i = C_i,est / (C_est / C)
-		#
-		# where
-		#
-		#	C_i is fuel cost of journey component
-		#	(C_est / C) is ratio of estimate to actual fuel costs
-		ratio = self.fuel_cost_estimate / self.fuel_cost
+		# NOTE: This is a workaround because Pint's handling of
+		# dimensionless quantities is, er, bad. Very bad. It just
+		# takes a case about which way the ratio comes out rather than
+		# it being based on the expression. Debugging this took a
+		# while.
+		ratio = (self.fuel_cost_estimate.to('GBP').magnitude /
+			     self.fuel_cost.to('GBP').magnitude)
 
-		return [cost / ratio
-				for cost in self._fuel_breakdown_estimate()]
+		breakdown = []
+		for cost in self._fuel_breakdown_estimate():
+			adjusted_cost = (cost / ratio).to('GBP') # Quantity inst.
+			breakdown.append(
+				Cost(cost.description, adjusted_cost.magnitude, 'GBP')
+			)
+
+		return breakdown

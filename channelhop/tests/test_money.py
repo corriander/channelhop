@@ -48,15 +48,23 @@ class TestCost(unittest.TestCase):
 		self.assertEqual(people[1].balance(), Quantity(25, 'GBP'))
 		self.assertItemsEqual((self.sample,), people[1].bill)
 
-	def test_split_assign(self):
+	def test_split_assign_single_person(self):
 		"""Splits the cost into equal parts and assigns to people."""
+		people = (Person('A'),)
+		self.sample.split_assign(people)
+
+		self.assertEqual(people[0].balance().magnitude,
+						 Quantity(25., 'GBP').magnitude)
+
+	def test_split_assign_two_people(self):
+		"""Splits cost between two people."""
 		people = Person('A'), Person('B')
 		self.sample.split_assign(people)
 
-		self.assertEqual(people[0].balance(), Quantity(12.5, 'GBP'))
-		self.assertItemsEqual((self.sample / 2,), people[0].bill)
-		self.assertEqual(people[1].balance(), Quantity(12.5, 'GBP'))
-		self.assertItemsEqual((self.sample / 2,), people[1].bill)
+		self.assertEqual(people[0].balance().magnitude,
+						 Quantity(12.5, 'GBP').magnitude)
+		self.assertEqual(people[1].balance().magnitude,
+						 Quantity(12.5, 'GBP').magnitude)
 
 	def test_quantify(self):
 		"""Converts the Cost instance into a plain Quantity."""

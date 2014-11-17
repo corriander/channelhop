@@ -75,7 +75,7 @@ class TestCost(unittest.TestCase):
 
 	def test_str(self):
 		"""Check the string representation is as expected."""
-		self.assertEqual(str(self.sample), '   25.00 GBP | test123')
+		self.assertEqual(str(self.sample), '  25.00 GBP | test123')
 
 	def test_repr(self):
 		"""Check the programmatic representation is as expected."""

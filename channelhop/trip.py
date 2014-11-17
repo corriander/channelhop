@@ -1,10 +1,4 @@
-# TODO: It is really probably a better idea to abstract the costing
-# from the trip definition rather than tying costs to particular parts
-# of the trips. Instead, have them originate from parts of the trip
-# but get dumped into a balance sheet type thing where they get
-# associated with people either automagically based on who's on the
-# journey, or explicitly based on some kind of argument.
-from channelhop.money import Cost, Expense
+from channelhop.money import Cost
 from channelhop.travel import Waypoint, Link
 from channelhop.quantities import Quantity
 

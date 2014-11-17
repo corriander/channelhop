@@ -91,7 +91,7 @@ class Car(object):
 		ignored.
 		"""
 		if not isinstance(distance, Quantity):
-			distance = Quantity(magnitude, units)
+			distance = Quantity(distance, units)
 
 		desc = "Fuel ({})".format(distance)
 		quantity = (self.unit_fuel_cost * distance)

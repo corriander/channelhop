@@ -64,9 +64,11 @@ class Cost(Quantity):
 			people : sequence of Person instances.
 		"""
 		n_people = len(people)
-		cost = self / n_people
-		cost.description = ', '.join((self.description,
-									  '/ {} people'.format(n_people)))
+		amount = (self / n_people).magnitude
+		description = ' '.join((self.description,
+								'/ {} people'.format(n_people)))
+
+		cost = Cost(description, amount, self.currency)
 		for person in people:
 			person._bill.append(cost)
 
@@ -108,8 +110,10 @@ class Cost(Quantity):
 
 	def __str__(self):
 		# Append description to Quantity string.
-		return '{} | {}'.format(Quantity.__str__(self),
-								self.description)
+
+		return '{:>7.2f} {} | {}'.format(self.magnitude,
+										 self.currency,
+										 self.description)
 
 	def __repr__(self):
 		# Return a programmatic representation
@@ -117,26 +121,6 @@ class Cost(Quantity):
 											   self.description,
 											   self.magnitude,
 											   self.currency)
-
-
-class Expense(Cost):
-	"""A one-off expense incurred by a person, e.g. a fuel bill.
-
-	Expenses represent actual transactions.
-	"""
-	def __init__(self, person, description, amount, currency='GBP'):
-		"""Arguments
-
-			person : trip.Person Instance
-			description : string describing the transaction.
-			amount : either numerical value or Quantity.
-			currency : currency to represent the cost.
-		"""
-		# Enforce expenses as a negative value (outgoings from the
-		# person).
-		amount = -1 * abs(amount)
-		Cost.__init__(self, description, amount, currency)
-		self.person = person
 
 
 # Functions

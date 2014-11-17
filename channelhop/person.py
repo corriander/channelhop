@@ -23,7 +23,8 @@ class Person(object):
 	def prettify_bill(self):
 		"""Return a human-readable, itemised bill as a string."""
 		strings = [self.name] + map(str, self._bill)
-		strings.append('	BALANCE: {}'.format(self.balance()))
+		strings.append('            |')
+		strings.append('{:>7.2f} | TOTAL'.format(self.balance()))
 		return '\n'.join(strings)
 
 	def add_expense(self, description, amount, currency='GBP'):
@@ -66,4 +67,5 @@ class Person(object):
 
 		Positive values represent underpayment, negative overpayment.
 		"""
+		# FIXME: Currency is hardcoded here.
 		return sum(self.bill).to('GBP')

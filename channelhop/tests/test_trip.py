@@ -2,7 +2,7 @@ import unittest
 
 from channelhop.person import Person
 from channelhop.vehicle import Car, FUELPRICE
-from channelhop.money import Expense, Cost
+from channelhop.money import Cost
 from channelhop.quantities import units, Quantity
 from channelhop.trip import Trip, TripDefError
 
